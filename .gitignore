@@ -1,6 +1,6 @@
-data/
-outputs/
-frames/
+/data/
+/outputs/
+/frames/
 *.npz
 *.mp4
 *.pt
