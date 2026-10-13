@@ -1,0 +1,26 @@
+# Poses for the right arm, in DEGREES (the code converts to radians).
+# Joints you leave out stay at 0 (clamped to their limits).
+# These are starting guesses: watch the viewer and tweak them.
+poses:
+  home:                 # arm hanging down, elbow slightly bent
+    r_shoulder_pitch: 0
+    r_shoulder_roll: 10
+    r_shoulder_yaw: 0
+    r_elbow: 20
+  reach_forward:        # hand in front of the chest, like reaching for a can
+    r_shoulder_pitch: -45
+    r_shoulder_roll: 20
+    r_shoulder_yaw: 0
+    r_elbow: 60
+    r_wrist_prosup: 0
+    r_wrist_pitch: 0
+    r_wrist_yaw: 0
+
+# The demo plays these steps in a loop.
+# Each step: [pose, hand closure (0 = open, 1 = closed), seconds to move there, seconds to hold]
+sequence:
+  - [home,          0.0, 1.0, 2.0]
+  - [reach_forward, 0.0, 2.0, 1.0]
+  - [reach_forward, 1.0, 1.0, 1.0]
+  - [reach_forward, 0.0, 1.0, 1.0]
+  - [home,          0.0, 2.0, 1.0]

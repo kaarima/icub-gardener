@@ -57,6 +57,16 @@ def add_tiny_inertial(link: ET.Element) -> None:
                                         "ixy": "0", "ixz": "0", "iyz": "0"})
 
 
+def add_tiny_collision(link: ET.Element) -> None:
+    """A link without <collision> gets a default 2 cm sphere collider from
+    threepp. Give helper links a 0.5 mm sphere instead, so they can't push
+    objects (e.g. inside the palm)."""
+    col = ET.SubElement(link, "collision")
+    ET.SubElement(col, "origin", {"xyz": "0 0 0", "rpy": "0 0 0"})
+    geom = ET.SubElement(col, "geometry")
+    ET.SubElement(geom, "sphere", {"radius": "0.0005"})
+
+
 def find_root_link(robot: ET.Element) -> str:
     links = {l.get("name") for l in robot.findall("link")}
     children = {j.find("child").get("link") for j in robot.findall("joint")}
@@ -135,6 +145,7 @@ def main():
                 link.remove(vis)
                 new_link.append(vis)
                 add_tiny_inertial(new_link)
+                add_tiny_collision(new_link)
                 jn = ET.SubElement(robot, "joint", {"name": name + "_joint", "type": "revolute"})
                 ET.SubElement(jn, "parent", {"link": link.get("name")})
                 ET.SubElement(jn, "child", {"link": name})
@@ -150,6 +161,7 @@ def main():
     ET.SubElement(inertial, "mass", {"value": "0.01"})
     ET.SubElement(inertial, "inertia", {"ixx": "1e-5", "iyy": "1e-5", "izz": "1e-5",
                                         "ixy": "0", "ixz": "0", "iyz": "0"})
+    add_tiny_collision(world)
     robot.insert(0, world)
     lift = ET.Element("joint", {"name": "world_to_" + old_root, "type": "fixed"})
     ET.SubElement(lift, "parent", {"link": "world"})
