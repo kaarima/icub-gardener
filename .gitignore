@@ -1,0 +1,13 @@
+data/
+outputs/
+frames/
+*.npz
+*.mp4
+*.pt
+*.ckpt
+*.safetensors
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.vscode/
+.env
