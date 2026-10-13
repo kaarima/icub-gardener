@@ -1,2 +1,3 @@
 - 2026-10-13: gardener.urdf: 30 movable joints (torso 3, right arm 7, right hand 20), 45 locked via near-zero limits, waist lifted 0.6 m; restored 7 meshes threepp hid on fixed joints + 2 extra hand meshes.
 - 2026-10-13: grasp test not working yet. Fixed phantom palm sphere + impulse-vs-force drive limits. Root cause: threepp uses bounding-box colliders per link. Next: cylinder colliders for fingers.
+- 2026-10-13: capsule finger colliders fitted (within 1 mm). Grasp still fails: thumb seems not to collide. Next: check contacts per hand part.
