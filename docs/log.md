@@ -1,0 +1,1 @@
+- 2026-10-13: gardener.urdf: 30 movable joints (torso 3, right arm 7, right hand 20), 45 locked via near-zero limits, waist lifted 0.6 m; restored 7 meshes threepp hid on fixed joints + 2 extra hand meshes.

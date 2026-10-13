@@ -37,6 +37,26 @@ def keep(name: str) -> bool:
     return name in KEEP_EXACT or bool(KEEP_PATTERN.match(name))
 
 
+def make_locked(j: ET.Element) -> None:
+    """Turn a fixed joint into a revolute joint with an almost-zero range."""
+    j.set("type", "revolute")
+    if j.find("axis") is None:
+        ET.SubElement(j, "axis", {"xyz": "0 0 1"})
+    lim = j.find("limit")
+    if lim is None:
+        lim = ET.SubElement(j, "limit", {"effort": "100", "velocity": "1"})
+    lim.set("lower", f"{-LOCK_EPS}")
+    lim.set("upper", f"{LOCK_EPS}")
+
+
+def add_tiny_inertial(link: ET.Element) -> None:
+    """PhysX needs a positive mass on every articulation link."""
+    inertial = ET.SubElement(link, "inertial")
+    ET.SubElement(inertial, "mass", {"value": "0.001"})
+    ET.SubElement(inertial, "inertia", {"ixx": "1e-7", "iyy": "1e-7", "izz": "1e-7",
+                                        "ixy": "0", "ixz": "0", "iyz": "0"})
+
+
 def find_root_link(robot: ET.Element) -> str:
     links = {l.get("name") for l in robot.findall("link")}
     children = {j.find("child").get("link") for j in robot.findall("joint")}
@@ -54,6 +74,8 @@ def main():
     ap.add_argument("--lock-mode", choices=["limits", "fixed"], default="limits",
                     help="limits (default): near-zero joint range, every part stays visible; "
                          "fixed: fixed joints (threepp then hides the merged parts)")
+    ap.add_argument("--keep-hidden-meshes", action="store_true",
+                    help="don't fix the meshes threepp hides (fixed-joint children, extra visuals)")
     args = ap.parse_args()
 
     src = os.path.expanduser(args.src)
@@ -92,6 +114,34 @@ def main():
                 j.remove(el)
         locked.append(name)
 
+    # Keep every mesh visible. threepp merges links joined by a fixed joint and
+    # draws only ONE <visual> per link, so:
+    #  (a) a fixed joint whose child link has a mesh becomes a locked joint;
+    #  (b) a link with several <visual>s keeps the first, and each extra one
+    #      moves to a tiny new child link attached by a locked joint.
+    unfixed, split = [], []
+    if not args.keep_hidden_meshes:
+        link_by_name = {l.get("name"): l for l in robot.findall("link")}
+        for j in robot.findall("joint"):
+            child = link_by_name[j.find("child").get("link")]
+            if j.get("type") == "fixed" and child.findall("visual"):
+                make_locked(j)
+                unfixed.append(j.get("name"))
+        for link in list(robot.findall("link")):
+            visuals = link.findall("visual")
+            for k, vis in enumerate(visuals[1:], start=1):
+                name = f"{link.get('name')}_visual{k}"
+                new_link = ET.SubElement(robot, "link", {"name": name})
+                link.remove(vis)
+                new_link.append(vis)
+                add_tiny_inertial(new_link)
+                jn = ET.SubElement(robot, "joint", {"name": name + "_joint", "type": "revolute"})
+                ET.SubElement(jn, "parent", {"link": link.get("name")})
+                ET.SubElement(jn, "child", {"link": name})
+                ET.SubElement(jn, "origin", {"xyz": "0 0 0", "rpy": "0 0 0"})
+                make_locked(jn)
+                split.append(name)
+
     # Lift: new root link "world" + fixed joint to iCub's old root (the waist).
     # URDF is z-up, so the lift goes along z.
     old_root = find_root_link(robot)
@@ -106,6 +156,8 @@ def main():
     ET.SubElement(lift, "child", {"link": old_root})
     ET.SubElement(lift, "origin", {"xyz": f"0 0 {args.height}", "rpy": "0 0 0"})
     robot.insert(1, lift)
+    if not args.keep_hidden_meshes:
+        make_locked(lift)  # so the waist mesh isn't merged into the empty world link
 
     os.makedirs(os.path.dirname(out) or ".", exist_ok=True)
     tree.write(out, encoding="utf-8", xml_declaration=True)
@@ -114,6 +166,8 @@ def main():
     print(f"root link: {old_root}  (lifted {args.height} m)")
     print(f"kept movable: {len(kept)}  (torso+arm {len(kept) - len(hand)}, right hand {len(hand)})")
     print(f"locked: {len(locked)}")
+    print(f"meshes made visible: {len(unfixed)} fixed-joint parts {unfixed}, "
+          f"{len(split)} extra visuals {split}")
     print(f"wrote {out}")
 
 
