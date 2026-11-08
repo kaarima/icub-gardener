@@ -489,12 +489,13 @@ def run_episode(urdf: str, config_path: str, poses_path: str, instruction: str, 
     res.stage_reached = state["phase"] = "retract"
     q = measured_q()
     T = kin.hand(q)
-    back = T.copy()
-    back[:3, 3] += T[:3, 1] * 0.07
-    up = back.copy()
+    # Straight up first, along the handle: backing away at table height drags the forearm on the table.
+    up = T.copy()
     up[2, 3] += 0.06
+    back = up.copy()
+    back[:3, 3] += T[:3, 1] * 0.07
     path = []
-    for start_T, goal_T in ((T, back), (back, up)):
+    for start_T, goal_T in ((T, up), (up, back)):
         for s in np.linspace(0.0, 1.0, 11)[1:]:
             q, _, _ = kin.ik(q, interpolate_pose(start_T, goal_T, s), PLAN_JOINTS, CENTER_WEIGHTS, iterations=25, rest=REST)
             path.append(dict(q))
