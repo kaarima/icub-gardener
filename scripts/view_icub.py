@@ -21,7 +21,7 @@ import yaml
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from gardener.sim.robot import ICub, TORSO, RIGHT_ARM, make_world  # noqa: E402
 
-DEFAULT_URDF = "~/icub-assets/iCub/robots/iCubGazeboV2_10/gardener.urdf"
+DEFAULT_URDF = "~/icub-assets/iCub/robots/iCubGazeboV2_10/gardener_hand.urdf"
 DT = 0.02  # seconds of simulation per frame
 SETTLE = 0.5  # seconds after a move before a hold counts as "settled" in the report
 
