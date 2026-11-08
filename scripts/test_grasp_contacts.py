@@ -28,7 +28,7 @@ import yaml
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from fit_hand_colliders import BASE_POSITION, matrix_to_rpy, quat_to_matrix, urdf_link_frames  # noqa: E402
-from gardener.sim.robot import FINGERS, ICub, make_world  # noqa: E402
+from gardener.sim.robot import DEFAULT_FINGER_DRIVE, FINGERS, ICub, make_world  # noqa: E402
 
 DEFAULT_URDF = "~/icub-assets/iCub/robots/iCubGazeboV2_10/gardener_hand.urdf"
 POSES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "configs", "poses.yaml")
@@ -80,16 +80,18 @@ def main():
                     help="final hand closure, 0 to 1. 0 is a control: the bar must fall")
     ap.add_argument("--close-time", type=float, default=2.0, help="seconds from open to fully closed")
     ap.add_argument("--max-force", type=float, default=30.0, help="drive limit for all joints")
-    ap.add_argument("--finger-limit", type=float, default=None,
+    ap.add_argument("--finger-limit", type=float, default=DEFAULT_FINGER_DRIVE[2],
                     help="torque limit for the 20 hand joints only (N*m); uses the collider-only robot build")
-    ap.add_argument("--finger-stiffness", type=float, default=20.0, help="used with --finger-limit (N*m/rad)")
-    ap.add_argument("--finger-damping", type=float, default=0.1, help="used with --finger-limit (N*m*s/rad)")
+    ap.add_argument("--finger-stiffness", type=float, default=DEFAULT_FINGER_DRIVE[0], help="N*m/rad")
+    ap.add_argument("--finger-damping", type=float, default=DEFAULT_FINGER_DRIVE[1], help="N*m*s/rad")
+    ap.add_argument("--uniform-drive", action="store_true",
+                    help="old build: every joint shares --max-force and the finger settings are ignored")
     args = ap.parse_args()
 
     urdf = os.path.expanduser(args.urdf)
     world = make_world()
     finger_drive = None
-    if args.finger_limit is not None:
+    if not args.uniform_drive:
         finger_drive = (args.finger_stiffness, args.finger_damping, args.finger_limit)
     robot = ICub(world, urdf, base_position=BASE_POSITION, max_force=args.max_force, finger_drive=finger_drive)
 

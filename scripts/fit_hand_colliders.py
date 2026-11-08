@@ -32,6 +32,9 @@ from gardener.sim.robot import FINGERS, ICub, make_world  # noqa: E402
 
 HAND_LINKS = ["r_hand"] + [f"r_hand_{f}_{k}" for f in FINGERS for k in range(4)]
 RADIUS_PERCENTILE = 80   # capsule radius = this percentile of the points' distance to the axis
+# Arm links that also get a capsule, with their own radius percentile. The forearm's bounding box
+# (146 x 109 x 74 mm) stops the arm reaching over a table; its mesh is close to a 43 mm radius capsule.
+ARM_CAPSULES = {"r_forearm": 95}
 BOX_PERCENTILE = 97      # palm box half-sizes = this percentile of |coordinate| along each axis
 BASE_POSITION = (0.0, 0.0, 0.05)  # must match ICub's default base_position
 
@@ -114,13 +117,13 @@ def points_in_link_frame(mesh, T_link):
     return (world - p) @ R  # = R^T (world - p) for each row
 
 
-def fit_capsule(pts):
+def fit_capsule(pts, radius_percentile=RADIUS_PERCENTILE):
     c = pts.mean(0)
     _, _, vt = np.linalg.svd(pts - c, full_matrices=False)
     axis = vt[0]
     t = (pts - c) @ axis
     radial = np.linalg.norm((pts - c) - np.outer(t, axis), axis=1)
-    r = float(np.percentile(radial, RADIUS_PERCENTILE))
+    r = float(np.percentile(radial, radius_percentile))
     tmin, tmax = float(t.min()), float(t.max())
     center = c + axis * (tmin + tmax) / 2
     length = max(0.0, (tmax - tmin) - 2 * r)  # threepp adds the two caps (2r) on top
@@ -168,7 +171,7 @@ def main():
     link_els = {l.get("name"): l for l in tree.getroot().findall("link")}
     frames = urdf_link_frames(tree.getroot(), BASE_POSITION)
 
-    for name in HAND_LINKS:
+    for name in HAND_LINKS + list(ARM_CAPSULES):
         target = art.link(name)
         i = next(k for k, l in enumerate(links) if same_link(l, target))
         pts = points_in_link_frame(meshes[i], frames[name])
@@ -177,7 +180,7 @@ def main():
             set_collision(link_els[name], center, R, "box", {"size": " ".join(f"{s:.6f}" for s in size)})
             print(f"{name:<20} box     size={np.round(size * 1000, 1)} mm")
         else:
-            center, R, r, length = fit_capsule(pts)
+            center, R, r, length = fit_capsule(pts, ARM_CAPSULES.get(name, RADIUS_PERCENTILE))
             set_collision(link_els[name], center, R, "cylinder", {"radius": f"{r:.6f}", "length": f"{length:.6f}"})
             print(f"{name:<20} capsule r={r * 1000:4.1f} mm  total length={(length + 2 * r) * 1000:4.1f} mm")
 

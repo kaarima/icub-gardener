@@ -20,6 +20,7 @@ import argparse
 import math
 import os
 import sys
+import time
 import xml.etree.ElementTree as ET
 
 import numpy as np
@@ -29,7 +30,8 @@ import yaml
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from fit_hand_colliders import BASE_POSITION, quat_to_matrix, rpy_to_matrix, urdf_link_frames  # noqa: E402
-from gardener.sim.robot import FINGERS, ICub, RIGHT_ARM, TORSO, make_world  # noqa: E402
+from gardener.sim.robot import (DEFAULT_FINGER_DRIVE, DEFAULT_SOLVER_ITERATIONS, FINGERS, ICub, RIGHT_ARM,  # noqa: E402
+                                TORSO, make_world)
 from test_grasp_contacts import PARTS, POSES, link_pose  # noqa: E402
 
 DEFAULT_URDF = "~/icub-assets/iCub/robots/iCubGazeboV2_10/gardener_hand.urdf"
@@ -39,6 +41,8 @@ CAN_SETTLE_S = 0.5    # can rests on the table before the hand closes
 HOLD_S = 1.0          # hold at full closure before lifting
 LIFT_S = 2.0          # duration of the lift
 AFTER_LIFT_S = 3.0    # hold in the air
+TABLE_SIZE = (0.60, 0.80, 0.03)  # x, y, thickness (m)
+TABLE_BACK_X = -0.11  # iCub faces -x; the chest ends at about x = -0.09
 SUCCESS_MIN_RISE = 0.020   # the can must rise at least this much (m)
 SUCCESS_MAX_SLIP = 0.005   # and move at most this much relative to the hand during the lift (m)
 SUCCESS_MAX_TILT = 15.0    # and tilt at most this much in the air (deg)
@@ -123,7 +127,7 @@ def build_can(world, handle_pos, u, table_z, a, material):
     body_c = handle_pos + u * (h / 2 + gap + bd / 2)
     body_c[2] = table_z + bh / 2
     body_mass = a.mass - handle_mass - 2 * 0.005
-    art = world.create_articulation(fixed_base=False, solver_position_iterations=16,
+    art = world.create_articulation(fixed_base=False, solver_position_iterations=max(16, a.solver_iters),
                                     disable_self_collision=True, drive_limits_are_forces=True)
     body_mesh = box_mesh((bd, bw, bh), body_c, yaw)
     body = art.add_link(body_mesh, density=body_mass / (bd * bw * bh), material=material)
@@ -146,11 +150,13 @@ def build_can(world, handle_pos, u, table_z, a, material):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--urdf", default=DEFAULT_URDF)
-    ap.add_argument("--finger-limit", type=float, required=True, help="torque limit for the hand joints (N*m)")
-    ap.add_argument("--finger-stiffness", type=float, default=20.0, help="N*m/rad")
-    ap.add_argument("--finger-damping", type=float, default=0.1, help="N*m*s/rad")
-    ap.add_argument("--pos", type=float, nargs=3, default=[-66.0, -22.0, 35.0], metavar=("X", "Y", "Z"),
-                    help="handle centre in the r_hand frame (mm); closer than x = -63 the thumb and forearm hit things")
+    ap.add_argument("--finger-limit", type=float, default=DEFAULT_FINGER_DRIVE[2], help="torque limit for the hand joints (N*m)")
+    ap.add_argument("--finger-stiffness", type=float, default=DEFAULT_FINGER_DRIVE[0], help="N*m/rad")
+    ap.add_argument("--finger-damping", type=float, default=DEFAULT_FINGER_DRIVE[1], help="N*m*s/rad")
+    ap.add_argument("--pose", default="grasp_table", help="arm pose from configs/poses.yaml")
+    ap.add_argument("--pos", type=float, nargs=3, default=[-80.0, -22.0, 25.0], metavar=("X", "Y", "Z"),
+                    help="handle centre in the r_hand frame (mm); a lower z puts the table further below the forearm, "
+                         "and from x = -75 towards the palm the open thumb hits the top arm")
     ap.add_argument("--handle", type=float, default=20.0, help="handle width and depth (mm)")
     ap.add_argument("--handle-length", type=float, default=110.0,
                     help="handle length (mm); long enough that the connecting arms clear the fingers")
@@ -164,9 +170,8 @@ def main():
     ap.add_argument("--no-can", action="store_true", help="same arm motion with no table or can: measures the arm alone")
     ap.add_argument("--lift", type=float, default=30.0,
                     help="commanded lift (mm); under a firm grip the hand falls about 3-8 mm short")
-    ap.add_argument("--timestep", type=float, default=0.0005,
-                    help="physics substep (s); at 2 ms a firm grip disturbs the arm by about 2 deg, at 0.5 ms it does not")
-    ap.add_argument("--solver-iters", type=int, default=12, help="robot solver position iterations, for convergence checks")
+    ap.add_argument("--timestep", type=float, default=0.002, help="physics substep (s)")
+    ap.add_argument("--solver-iters", type=int, default=DEFAULT_SOLVER_ITERATIONS, help="solver position iterations")
     args = ap.parse_args()
 
     urdf = os.path.expanduser(args.urdf)
@@ -181,13 +186,14 @@ def main():
     def hand_T():
         return link_pose(hand_link) @ T_com_to_urdf
 
+    # A sensor on every robot body: anything outside the hand touching the table or can is a setup fault.
     sensors = {}
-    for name in PARTS + ["r_forearm", "r_wrist_1", "r_elbow_1"]:
+    for name in PARTS + [n for n in robot.body_names if n not in PARTS]:
         sensors[name] = tp.ContactSensor(robot.collider(name))
         world.register_sensor(sensors[name])
 
     with open(POSES) as f:
-        pose = yaml.safe_load(f)["poses"]["reach_forward"]
+        pose = yaml.safe_load(f)["poses"][args.pose]
     robot.set_targets({j: math.radians(v) for j, v in pose.items()})
     robot.set_targets(robot.hand_targets(0.0))
     robot.apply()
@@ -253,11 +259,10 @@ def main():
     bottom_clearance = (args.height - args.handle_length) / 2000.0
     table_z = handle_pos[2] - args.handle_length / 2000.0 - bottom_clearance
     h, gap, bd = args.handle / 1000.0, args.gap / 1000.0, args.body / 1000.0
-    # A table under the can's body only: the forearm collider is a big box and must not hit it.
-    near, far = h / 2 + gap - 0.005, h / 2 + gap + bd + 0.005
-    table_c = handle_pos + u * (near + far) / 2
-    table_c[2] = table_z - 0.01
-    table_mesh = box_mesh((far - near, bd, 0.02), table_c, math.atan2(u[1], u[0]))
+    # A full-size table: its back edge stops just in front of the chest, and the arm reaches over it.
+    table_c = np.array([TABLE_BACK_X - TABLE_SIZE[0] / 2, 0.0, table_z - TABLE_SIZE[2] / 2])
+    table_mesh = box_mesh(TABLE_SIZE, table_c, 0.0)
+    print(f"table: {TABLE_SIZE[0] * 1000:.0f} x {TABLE_SIZE[1] * 1000:.0f} mm, top at z = {table_z * 1000:.0f} mm")
     material = world.create_material(args.friction, args.friction, 0.0, friction_combine="min")
     world.add_static(table_mesh, material=material)
     art_can, body, can_meshes = build_can(world, handle_pos, u, table_z, args, material)
@@ -271,11 +276,16 @@ def main():
     can_hold = {n: 0.0 for n in can_sensors}
     can_first = {}
 
+    physics_wall, sim_time = 0.0, 0.0
+
     def tick(in_hold=False):
-        nonlocal hold_n
+        nonlocal hold_n, physics_wall, sim_time
         robot.set_targets(robot.hand_targets(closure))
         robot.apply()
+        t0 = time.perf_counter()
         world.step(DT)
+        physics_wall += time.perf_counter() - t0
+        sim_time += DT
         for name, sensor in sensors.items():
             force = 0.0
             for s in sensor.drain():
@@ -381,6 +391,11 @@ def main():
     print(f"lowest corner of the can body above the table at the end: {clearance:.1f} mm")
     missing = [f for f in FINGERS if not any(n in first_touch for n in PARTS if f"_{f}_" in n)]
     print(f"\nfingers with no contact at all: {missing or 'none'}")
+    others = [n for n in sensors if n not in PARTS and n in first_touch]
+    print("robot bodies outside the hand touching anything: "
+          + (", ".join(f"{n} ({peak[n]:.0f} N)" for n in others) if others else "none"))
+    print(f"SPEED: {sim_time:.1f} s simulated in {physics_wall:.1f} s of physics = {sim_time / physics_wall:.2f} x real time "
+          f"(timestep {args.timestep * 1000:g} ms, {args.solver_iters} solver iterations)")
     print(f"can: {args.mass} kg, handle {args.handle:.0f} mm, friction limit {args.friction}, finger limit {args.finger_limit} N*m")
     print(f"RESULT: {'LIFT SUCCESS' if ok else 'LIFT FAILED'} (needs rise >= {SUCCESS_MIN_RISE * 1000:.0f} mm, "
           f"slip <= {SUCCESS_MAX_SLIP * 1000:.0f} mm, tilt <= {SUCCESS_MAX_TILT:.0f} deg)")
