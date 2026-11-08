@@ -437,7 +437,9 @@ def run_episode(urdf: str, config_path: str, poses_path: str, instruction: str, 
         if tilt < max_tilt:
             # Pause while water is flowing, so the amount can be judged.
             flowing = counts()["air"] > 0.01 * n_total
-            tilt = min(max_tilt, tilt + rate * DT * (0.25 if flowing else 1.0))
+            # A big pour has time to spare: it only needs to slow down near its target.
+            hurry = amount == "lot" and poured < goal_fraction - 0.15
+            tilt = min(max_tilt, tilt + rate * DT * (0.25 if flowing and not hurry else 1.0))
         else:
             hold_time += DT
         T = pour_pose(can_now, tilt)
