@@ -25,6 +25,9 @@ CENTER_WEIGHTS = {"r_wrist_yaw": 1.0, "r_wrist_pitch": 0.5, "r_wrist_prosup": 0.
 # forearm rising away from the hand, which is what holds it above the table.
 REST = {"torso_pitch": 0.0, "torso_roll": 0.0, "torso_yaw": 0.0, "r_wrist_yaw": math.radians(-10.0)}
 PLAN_JOINTS = TORSO + RIGHT_ARM
+# A few mm off on the way in does no harm, while a hand yaw offset makes the can turn in the hand.
+# So a plan with no offset is accepted up to this path error before any offset is tried.
+PATH_TOLERANCE = 0.0045
 
 
 @dataclass
@@ -125,7 +128,7 @@ def plan_grasp(kin: ArmKinematics, scene: Scene, can: CanGeometry, can_yaw: floa
         T_grasp[:3, :3] = R
         T_grasp[:3, 3] = handle - R @ scene.handle_in_hand
         q_grasp, p_err, r_err = solve(T_grasp)
-        if p_err > 0.002 or r_err > math.radians(2.0):
+        if p_err > 0.003 or r_err > math.radians(2.0):
             continue
 
         T_pre = T_grasp.copy()
@@ -153,7 +156,7 @@ def plan_grasp(kin: ArmKinematics, scene: Scene, can: CanGeometry, can_yaw: floa
                     q_grasp=q_grasp, path_reach=reach, path_approach=approach, position_error=max(p_err, path_err),
                     rotation_error=r_err, wrist_yaw_margin=margin, min_clearance=clearance, hand_yaw_offset_deg=offset)
         ok = (margin >= math.radians(min_margin_deg) and min(clearance.values()) >= min_clearance
-              and plan.position_error < 0.002)
+              and plan.position_error < PATH_TOLERANCE)
         if ok:
             return plan
         rank = min(margin / math.radians(min_margin_deg), min(clearance.values()) / min_clearance, 1.0) - plan.position_error * 100

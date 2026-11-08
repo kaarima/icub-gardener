@@ -7,8 +7,8 @@ from dataclasses import dataclass
 import numpy as np
 import threepp as tp
 
-TABLE_SIZE = (0.60, 0.80, 0.03)  # x, y, thickness
-TABLE_BACK_X = -0.11             # iCub faces -x; the chest ends at about x = -0.09
+TABLE_SIZE = (0.60, 1.00, 0.03)  # x, y, thickness
+TABLE_BACK_X = -0.16             # iCub faces -x; further in, the locked left forearm hits it when the torso leans
 
 
 @dataclass
@@ -39,6 +39,29 @@ def add_table(world, table_z: float, material):
     mesh = box_mesh(TABLE_SIZE, centre)
     world.add_static(mesh, material=material)
     return mesh
+
+
+def add_pot(world, x: float, y: float, z: float, radius: float, height: float, wall: float, floor: float, material, segments: int = 16):
+    """An open pot for PhysX: a ring of wall boxes and a floor plate. threepp has no hollow cylinder."""
+    centre = np.array([x, y, z + height / 2])
+    width = 2 * (radius + wall) * math.tan(math.pi / segments) * 1.05   # slightly wide, so the ring has no gaps
+    meshes = []
+    for i in range(segments):
+        a = 2 * math.pi * i / segments
+        p = centre + np.array([math.cos(a), math.sin(a), 0.0]) * (radius + wall / 2)
+        meshes.append(box_mesh((wall, width, height), p, a))
+    half = (radius + wall) * math.cos(math.pi / 4)   # a square plate that stays inside the ring
+    meshes.append(box_mesh((2 * half, 2 * half, floor), (x, y, z + floor / 2)))
+    for m in meshes:
+        world.add_static(m, material=material)
+    return meshes
+
+
+def can_clear_of_pot(body_centre, handle_centre, pot_xy, pot_outer_radius: float, margin: float = 0.010) -> bool:
+    """False if the can's footprint would overlap a pot: such a layout cannot exist on a real table."""
+    body = np.linalg.norm(np.asarray(body_centre)[:2] - np.asarray(pot_xy)) > 0.050 + pot_outer_radius + margin
+    handle = np.linalg.norm(np.asarray(handle_centre)[:2] - np.asarray(pot_xy)) > 0.015 + pot_outer_radius + margin
+    return bool(body and handle)
 
 
 def build_can(world, handle_pos, u, table_z: float, can: CanGeometry, material, solver_iterations: int = 16):

@@ -34,6 +34,8 @@ def main():
     print(f"water: poured {r.poured_fraction * 100:.0f}% of the can, {r.water_in_target * 100:.0f}% of that in the target pot, "
           f"spill {r.spill * 100:.0f}%, wrong pot {r.wrong_pot}, amount in band {r.amount_ok}, counts {r.counts}")
     print(f"can: drag {r.drag_mm:.1f} mm, lift {r.lift_mm:.1f} mm, final tilt {r.final_tilt_deg:.1f} deg, placed {r.placed_error_mm:.0f} mm from the start")
+    print(f"spout {r.spout_error_mm:.1f} mm off target, {r.spilled_before_pour * 100:.0f}% lost before the pour")
+    print(f"layouts redrawn {r.layouts_redrawn}; contacts: {'; '.join(r.contacts) or 'none'}")
     print(f"wrist_yaw margin {r.min_wrist_yaw_margin_deg:.1f} deg; {r.sim_time:.1f} s simulated in {r.wall_time:.1f} s = {r.sim_time / max(r.wall_time, 1e-6):.2f} x real time")
 
 

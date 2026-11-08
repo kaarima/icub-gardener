@@ -1,13 +1,14 @@
 # The garden scene and its randomisation (book section 7.4). Lengths in metres, angles in degrees.
 pots:
   # iCub faces -x, and its right side is +y.
+  # Where the arm stays comfortable. Layouts where the can or open hand would meet a pot are redrawn.
   left: {x: -0.35, y: -0.10}
   right: {x: -0.35, y: 0.25}
 randomise:
   can_position: 0.08     # +- in x and y
   can_yaw: 25.0          # +-
   pot_position: 0.05     # +- in x and y
-  water_fill: [0.40, 0.90]
+  water_fill: [0.40, 0.90]   # of what the can holds upright, below the spout notch
 water:
   particles: 2000
 can:
