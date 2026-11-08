@@ -82,6 +82,7 @@ class Result:
     spilled_before_pour: float = 0.0
     spout_error_mm: float = 0.0
     contacts: list = field(default_factory=list)  # things that should never touch, see run_episode
+    contact_states: dict = field(default_factory=dict)  # diagnostics: the arm's state at the strongest moment of each contact
     counts: dict = field(default_factory=dict)
     log: list = field(default_factory=list)
 
@@ -156,6 +157,17 @@ def run_episode(urdf: str, config_path: str, poses_path: str, instruction: str, 
     table_z_ref = [scene.table_z]
     pot_list = []
     contacts = {}
+    contact_states = res.contact_states
+
+    def can_meshes_pose():
+        """World pose (position, quaternion wxyz) of each part of the can, for diagnostics."""
+        if can_meshes_ref[0] is None:
+            return {}
+        out = {}
+        for name, mesh in can_meshes_ref[0].items():
+            p_, q_ = mesh.position, mesh.quaternion
+            out[name] = ([p_.x, p_.y, p_.z], [q_.w, q_.x, q_.y, q_.z])
+        return out
 
     def strongest(sensor):
         force = 0.0
@@ -167,6 +179,9 @@ def run_episode(urdf: str, config_path: str, poses_path: str, instruction: str, 
     def note(what, force):
         if force > 0.0:
             key = f"{what} during {state['phase']}"
+            if force > contacts.get(key, 0.0):
+                contact_states[key] = dict(force=force, q={n: float(v) for n, v in zip(PLAN_JOINTS, robot.get(PLAN_JOINTS))},
+                                           can=can_meshes_pose(), table_z=table_z_ref[0], pots=[(p_.x, p_.y, p_.z, p_.radius, p_.wall, p_.height) for p_ in pot_list])
             contacts[key] = max(contacts.get(key, 0.0), force)
 
     def contact_target(p):

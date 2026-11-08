@@ -8,6 +8,7 @@ Usage:
 Nothing is written to disk.
 """
 import argparse
+import json
 import os
 import sys
 
@@ -26,10 +27,14 @@ def main():
     ap.add_argument("--instruction", default="Water the left plant.")
     ap.add_argument("--can-yaw", type=float, default=None, help="deg; overrides the seed's random rotation")
     ap.add_argument("--quiet", action="store_true")
+    ap.add_argument("--dump-contacts", default=None, help="write the arm's state at each contact to this JSON file")
     args = ap.parse_args()
 
     r = run_episode(os.path.expanduser(args.urdf), args.config, os.path.join(ROOT, "configs", "poses.yaml"),
                     args.instruction, args.seed, verbose=not args.quiet, can_yaw_deg=args.can_yaw)
+    if args.dump_contacts:
+        with open(args.dump_contacts, "w") as f:
+            json.dump(r.contact_states, f)
     print(f"RESULT: {'SUCCESS' if r.success else 'FAILED: ' + r.failure}, reached {r.stage_reached}")
     print(f"water: poured {r.poured_fraction * 100:.0f}% of the can, {r.water_in_target * 100:.0f}% of that in the target pot, "
           f"spill {r.spill * 100:.0f}%, wrong pot {r.wrong_pot}, amount in band {r.amount_ok}, counts {r.counts}")
