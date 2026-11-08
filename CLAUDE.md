@@ -91,12 +91,14 @@ python scripts/view_icub.py --colliders    # draw collision shapes as yellow wir
 ## Current status (as of November 2026)
 - Robot loads and holds poses; arm + hand sequence runs (`view_icub.py --test` reports errors/speeds).
 - Hand colliders fitted (capsule fingers, oriented palm box).
-- Friction grip works on a bar (`test_grasp_contacts.py`), and the can leaves the table in every lift
-  run (`test_can_lift.py`), but the strict pass rate is only 4/9 at 1 N*m and 0/9 at 0.1 N*m. See `docs/log.md`.
+- Friction grip works on a bar (`test_grasp_contacts.py`), and `test_can_lift.py` passes 16/16 at 0.3 and
+  1 N*m with the can spawned in the open hand (no reach or approach yet). See `docs/log.md`.
+- Current finger drive: stiffness 20, damping 0.1, limit **1 N*m** (Karima's choice for now). Contact tests
+  with a firm grip need a **0.5 ms** timestep; at 2 ms the grip disturbs the arm by about 2 deg.
 
 ## Next steps (in this order)
-1. **Reduce can tilt and hand shortfall**: find why arm joints drift under a firm grip, and make the grip
-   resist rotation around the handle (it is the main reason for failed lifts).
+1. **Real table and forearm**: the big forearm collider catches on anything near the hand. Fit a smaller
+   collider, then lift from a full-size table.
 2. **Rerun the grasp search** for the watering-can handle, and record results.
 
 ## Rules for working in this repo

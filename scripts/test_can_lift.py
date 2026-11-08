@@ -161,13 +161,17 @@ def main():
     ap.add_argument("--friction", type=float, default=0.5, help="upper limit on friction at every can contact")
     ap.add_argument("--closure", type=float, default=1.0, help="final hand closure; 0 is the control")
     ap.add_argument("--close-time", type=float, default=2.0, help="seconds to close the hand")
+    ap.add_argument("--no-can", action="store_true", help="same arm motion with no table or can: measures the arm alone")
     ap.add_argument("--lift", type=float, default=30.0,
                     help="commanded lift (mm); under a firm grip the hand falls about 3-8 mm short")
+    ap.add_argument("--timestep", type=float, default=0.0005,
+                    help="physics substep (s); at 2 ms a firm grip disturbs the arm by about 2 deg, at 0.5 ms it does not")
+    ap.add_argument("--solver-iters", type=int, default=12, help="robot solver position iterations, for convergence checks")
     args = ap.parse_args()
 
     urdf = os.path.expanduser(args.urdf)
-    world = make_world()
-    robot = ICub(world, urdf, base_position=BASE_POSITION,
+    world = make_world(timestep=args.timestep, max_substeps=math.ceil(DT / args.timestep) + 1)
+    robot = ICub(world, urdf, base_position=BASE_POSITION, solver_iterations=args.solver_iters,
                  finger_drive=(args.finger_stiffness, args.finger_damping, args.finger_limit))
     world.step(1e-4)
     root = ET.parse(urdf).getroot()
@@ -205,6 +209,39 @@ def main():
     print(f"lift plan: IK error {ik_err * 1000:.2f} mm, joint moves (deg): "
           + ", ".join(f"{n[2:]} {math.degrees(arm_goal[n] - arm_start[n]):+.1f}" for n in RIGHT_ARM))
 
+    def report_arm(label):
+        """Print each arm joint's error and the hand's position, so drift can be followed over time."""
+        p = robot.positions()
+        errs = ", ".join(f"{n[2:]} {math.degrees(robot.targets[robot.index[n]] - p[robot.index[n]]):+.2f}" for n in RIGHT_ARM)
+        print(f"  {label:<18} hand z {hand_T()[2, 3] * 1000:8.2f} mm | err (deg): {errs}")
+
+    if args.no_can:
+        print("no table, no can. Arm joint error = target - actual:")
+        report_arm("settled")
+        start_z, closure = hand_T()[2, 3], 0.0
+        for step in range(int(args.close_time / DT)):
+            closure = args.closure * (step + 1) * DT / args.close_time
+            robot.set_targets(robot.hand_targets(closure))
+            robot.apply()
+            world.step(DT)
+        for _ in range(int(HOLD_S / DT)):
+            world.step(DT)
+        report_arm("hand closed" if args.closure > 0 else "before lift")
+        closed_z = hand_T()[2, 3]
+        for step in range(int(LIFT_S / DT)):
+            s = (step + 1) * DT / LIFT_S
+            s = s * s * (3 - 2 * s)
+            robot.set_targets({n: arm_start[n] + s * (arm_goal[n] - arm_start[n]) for n in RIGHT_ARM})
+            robot.apply()
+            world.step(DT)
+        report_arm("end of lift")
+        for _ in range(int(AFTER_LIFT_S / DT)):
+            world.step(DT)
+        report_arm(f"{AFTER_LIFT_S:.0f} s later")
+        print(f"HAND RISE: {(hand_T()[2, 3] - closed_z) * 1000:.2f} mm of {args.lift:.0f} mm commanded "
+              f"(hand moved {(closed_z - start_z) * 1000:+.2f} mm while closing)")
+        return
+
     # Place the table and can around the settled hand.
     T = hand_T()
     handle_pos = (T @ np.append(np.array(args.pos) / 1000.0, 1.0))[:3]
@@ -216,8 +253,8 @@ def main():
     bottom_clearance = (args.height - args.handle_length) / 2000.0
     table_z = handle_pos[2] - args.handle_length / 2000.0 - bottom_clearance
     h, gap, bd = args.handle / 1000.0, args.gap / 1000.0, args.body / 1000.0
-    # A narrow table, just the can's footprint: the forearm collider is a big box and must not hit it.
-    near, far = -h / 2 - 0.005, h / 2 + gap + bd + 0.005
+    # A table under the can's body only: the forearm collider is a big box and must not hit it.
+    near, far = h / 2 + gap - 0.005, h / 2 + gap + bd + 0.005
     table_c = handle_pos + u * (near + far) / 2
     table_c[2] = table_z - 0.01
     table_mesh = box_mesh((far - near, bd, 0.02), table_c, math.atan2(u[1], u[0]))
@@ -276,6 +313,7 @@ def main():
     first_touch.clear()
     rest_p, rest_tilt, rest_yaw = can_state()
     print(f"can resting: tilt {rest_tilt:.2f} deg, hand parts touching with the hand open: {touching_open or 'nothing'}")
+    report_arm("before closing")
 
     # Close.
     for step in range(int(args.close_time / DT)):
@@ -285,11 +323,18 @@ def main():
     for _ in range(int(HOLD_S / DT)):
         tick(in_hold=True)
     closed_p, closed_tilt, closed_yaw = can_state()
+    report_arm("hand closed")
     drag_xy = float(np.linalg.norm((closed_p - rest_p)[:2])) * 1000
     print(f"\nDRAG while closing: {drag_xy:.1f} mm on the table, height change {(closed_p - rest_p)[2] * 1000:+.1f} mm, "
           f"yaw change {closed_yaw - rest_yaw:+.1f} deg, tilt {closed_tilt:.1f} deg")
 
-    # Lift.
+    # Lift, planned from where the closed hand really is: pressing the can on the table pushes the arm
+    # up a few mm, and a plan from the settled pose would lose that from the lift. Each joint keeps the
+    # settled gap between target and actual angle, which is what holds the arm up against gravity.
+    q_closed = dict(zip(chain_names, robot.get(chain_names)))
+    q_up, ik_err = kin.solve_lift(q_closed, RIGHT_ARM, lower, upper, args.lift / 1000.0)
+    arm_goal = {n: q_up[n] + arm_start[n] - q_now[n] for n in RIGHT_ARM}
+    print(f"lift replanned from the closed hand: IK error {ik_err * 1000:.2f} mm")
     hand_before, can_before = hand_T()[:3, 3].copy(), closed_p.copy()
     rel_before = np.linalg.inv(hand_T()) @ np.append(closed_p, 1.0)
     handle_mesh = can_meshes["handle"]
@@ -304,8 +349,10 @@ def main():
         s = s * s * (3 - 2 * s)
         robot.set_targets({n: arm_start[n] + s * (arm_goal[n] - arm_start[n]) for n in RIGHT_ARM})
         tick()
+    report_arm("end of lift")
     for _ in range(int(AFTER_LIFT_S / DT)):
         tick()
+    report_arm(f"{AFTER_LIFT_S:.0f} s later")
     end_p, end_tilt, _ = can_state()
     # Height of the body's lowest corner above the table: positive means it has really left the table.
     q_end = body.quaternion

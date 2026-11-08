@@ -50,7 +50,8 @@ class ICub:
                  base_position=(0.0, 0.0, 0.05),
                  stiffness: float = 400.0, damping: float = 40.0, max_force: float = 30.0,
                  density: float = 1200.0,
-                 finger_drive: tuple[float, float, float] | None = None):
+                 finger_drive: tuple[float, float, float] | None = None,
+                 solver_iterations: int = 12):
         """finger_drive = (stiffness, damping, torque limit) gives the 20 hand joints their own
         drive. It builds the robot from colliders only (see builder.py), so no visual meshes."""
         self.urdf_path = os.path.expanduser(urdf_path)
@@ -72,7 +73,8 @@ class ICub:
             others = (float(stiffness), float(damping), float(max_force))
             art, meshes, joint_names, self._links_by_name, self._meshes_by_name = build_articulation(
                 world, self.urdf_path, base_position,
-                lambda joint: tuple(map(float, finger_drive)) if joint in hand else others)
+                lambda joint: tuple(map(float, finger_drive)) if joint in hand else others,
+                solver_iterations)
         self.art = UrdfArticulation(art, meshes, joint_names, world)
         self.names = list(self.art.joint_names)
         self.index = {n: i for i, n in enumerate(self.names)}
