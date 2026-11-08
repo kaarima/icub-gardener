@@ -33,6 +33,9 @@ particles) · NVIDIA cuRobo (motion planning) · PyTorch · Hugging Face LeRobot
 ## Layout
 ```
 gardener/sim/robot.py          # ICub class: loads the gardener URDF in PhysX, PD position drives, control by joint name
+gardener/sim/builder.py        # rebuilds the robot with add_link so the fingers get their own drive (colliders only)
+scripts/test_grasp_contacts.py # closes the hand on a bar: contact map per hand part, slip when gravity turns on
+scripts/test_can_lift.py       # 4-box can on a table: drag while closing and a real lift, gravity on
 scripts/make_gardener_urdf.py  # original iCub URDF -> gardener.urdf (locks unused joints, lifts robot on a `world` link)
 scripts/fit_hand_colliders.py  # gardener.urdf -> gardener_hand.urdf (capsule finger colliders, oriented palm box)
 scripts/view_icub.py           # viewer / headless test of an arm + hand sequence
@@ -78,18 +81,23 @@ python scripts/view_icub.py --colliders    # draw collision shapes as yellow wir
   the values we set; always verify actual drive force/stiffness against intended values.
 - There was a **hidden collision shape in the palm** that blocked grasps. Always inspect colliders with
   `--colliders` before blaming the controller.
+- `load_articulation` applies **one drive to every joint** and ignores per-joint `effort` and `damping` in
+  the URDF. For finger-specific drives use `ICub(..., finger_drive=(stiffness, damping, limit))`.
+- `self_collision` is **off**: fingers, palm and thumb pass through each other and only feel other objects.
+- PhysX allows **one world per process**, and contact sensors cannot attach to static bodies.
+- The forearm collider is a **large box (146x74x109 mm)** and catches on tables near the hand. Watch the
+  `r_forearm` contact line, and check that the hand-open control still rises the full amount.
 
 ## Current status (as of November 2026)
 - Robot loads and holds poses; arm + hand sequence runs (`view_icub.py --test` reports errors/speeds).
 - Hand colliders fitted (capsule fingers, oriented palm box).
-- **Grasping is not solved yet.**
+- Friction grip works on a bar (`test_grasp_contacts.py`), and the can leaves the table in every lift
+  run (`test_can_lift.py`), but the strict pass rate is only 4/9 at 1 N*m and 0/9 at 0.1 N*m. See `docs/log.md`.
 
 ## Next steps (in this order)
-1. **Fix the palm box**: check its size/position/orientation against the palm mesh in `--colliders`
-   view; make sure it does not stick out past the inner palm surface or overlap the finger bases.
-2. **Proper contact tests**: small headless tests that close the hand on simple objects (box, cylinder
-   the size of the can handle) and report contact points, contact forces and whether the object slips.
-3. **Rerun the grasp search** for the watering-can handle with the fixed colliders, and record results.
+1. **Reduce can tilt and hand shortfall**: find why arm joints drift under a firm grip, and make the grip
+   resist rotation around the handle (it is the main reason for failed lifts).
+2. **Rerun the grasp search** for the watering-can handle, and record results.
 
 ## Rules for working in this repo
 - Run `python scripts/view_icub.py --test` after any change to the robot, URDF scripts or drives, and
