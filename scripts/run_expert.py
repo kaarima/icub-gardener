@@ -27,11 +27,22 @@ def main():
     ap.add_argument("--instruction", default="Water the left plant.")
     ap.add_argument("--can-yaw", type=float, default=None, help="deg; overrides the seed's random rotation")
     ap.add_argument("--quiet", action="store_true")
+    ap.add_argument("--record", default=None, help="if the episode succeeds, save it to this .npz file")
     ap.add_argument("--dump-contacts", default=None, help="write the arm's state at each contact to this JSON file")
     args = ap.parse_args()
 
+    recorder = None
+    if args.record:
+        from gardener.data.record import EpisodeRecorder
+        recorder = EpisodeRecorder()
     r = run_episode(os.path.expanduser(args.urdf), args.config, os.path.join(ROOT, "configs", "poses.yaml"),
-                    args.instruction, args.seed, verbose=not args.quiet, can_yaw_deg=args.can_yaw)
+                    args.instruction, args.seed, verbose=not args.quiet, can_yaw_deg=args.can_yaw, recorder=recorder)
+    if recorder is not None and r.success:
+        # Saved under a temporary name and then renamed, so a crash cannot leave a half-written episode.
+        tmp = args.record + ".tmp.npz"
+        recorder.save(tmp, args.instruction, args.seed, dict(poured=r.poured_fraction, water_in_target=r.water_in_target,
+                                                             drag_mm=r.drag_mm, amount_ok=r.amount_ok))
+        os.replace(tmp, args.record)
     if args.dump_contacts:
         with open(args.dump_contacts, "w") as f:
             json.dump(r.contact_states, f)

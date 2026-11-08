@@ -88,7 +88,8 @@ class Result:
 
 
 def run_episode(urdf: str, config_path: str, poses_path: str, instruction: str, seed: int, verbose: bool = True,
-                can_yaw_deg: float | None = None) -> Result:
+                can_yaw_deg: float | None = None, recorder=None) -> Result:
+    """recorder: an optional gardener.data.record.EpisodeRecorder. It only reads the simulation."""
     with open(config_path) as f:
         cfg = yaml.safe_load(f)
     with open(poses_path) as f:
@@ -235,7 +236,7 @@ def run_episode(urdf: str, config_path: str, poses_path: str, instruction: str, 
     sag = {n: robot.targets[robot.index[n]] - settled[n] for n in PLAN_JOINTS}
 
     material = world.create_material(0.5, 0.5, 0.0, friction_combine="min")
-    add_table(world, scene.table_z, material)
+    table_mesh = add_table(world, scene.table_z, material)
     a = scene.yaw0 + math.radians(can_yaw)
     u = np.array([math.cos(a), math.sin(a), 0.0])
     handle_pos = scene.body_centre - u * can.handle_to_body_centre
@@ -244,8 +245,9 @@ def run_episode(urdf: str, config_path: str, poses_path: str, instruction: str, 
     for k in ("left", "right"):
         p = cfg["pots"][k]
         pots[k] = Pot(x=p["x"] + pot_shift[k][0], y=p["y"] + pot_shift[k][1], z=scene.table_z)
+    pot_meshes = []
     for q in pots.values():
-        add_pot(world, q.x, q.y, q.z, q.radius, q.height, q.wall, q.floor, material)
+        pot_meshes += add_pot(world, q.x, q.y, q.z, q.radius, q.height, q.wall, q.floor, material)
     can_meshes_ref[0] = can_meshes
     can_body_sensor[0] = tp.ContactSensor(can_meshes["body"])
     world.register_sensor(can_body_sensor[0])
@@ -266,11 +268,18 @@ def run_episode(urdf: str, config_path: str, poses_path: str, instruction: str, 
     table_box = ((TABLE_BACK_X - TABLE_SIZE[0] / 2, 0.0, scene.table_z - TABLE_SIZE[2] / 2), tuple(v / 2 for v in TABLE_SIZE))
     water = WaterSim((T_can[:3, :3] @ local.T).T + T_can[:3, 3], pot_list, [table_box], WaterParams(spacing=spacing), ground=0.0)
     boxes = can_water_boxes(INNER_HALF, INNER_HALF, INNER_HEIGHT, spout_drop=SPOUT_DROP)
+    if recorder is not None:
+        recorder.add_robot(robot, HAND_PARTS)
+        recorder.add_scenery(table_mesh, pot_meshes, list(can_meshes.values()), water.n, scene.table_z)
 
     def step():
         physics()
         water.set_can(can_frame(), boxes)
         water.step(DT)
+        if recorder is not None and state["phase"] != "setup":
+            q_now = dict(zip(PLAN_JOINTS, robot.get(PLAN_JOINTS)))
+            recorder.frame(kin.fk("r_eye", q_now)[:3, 3], q_now, state["fingers"], state["thumb"],
+                           {n: float(robot.targets[robot.index[n]]) for n in PLAN_JOINTS}, water.positions())
 
     def counts():
         return water.count(can_frame(), INNER_HALF + 0.012, INNER_HALF + 0.012, INNER_HEIGHT + 0.005, scene.table_z)
