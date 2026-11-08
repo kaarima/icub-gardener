@@ -15,6 +15,14 @@ poses:
     r_wrist_prosup: 0
     r_wrist_pitch: 0
     r_wrist_yaw: 0
+  grasp_table:          # hand upright above a waist-height table, forearm clear of it (found by FK search)
+    r_shoulder_pitch: -17.0
+    r_shoulder_roll: 6.6
+    r_shoulder_yaw: -15.4
+    r_elbow: 59.3
+    r_wrist_prosup: 3.9
+    r_wrist_pitch: -9.7
+    r_wrist_yaw: -20.0
 
 # The demo plays these steps in a loop.
 # Each step: [pose, hand closure (0 = open, 1 = closed), seconds to move there, seconds to hold]

@@ -26,6 +26,11 @@ RIGHT_ARM = [
 FINGERS = ["thumb", "index", "middle", "ring", "little"]
 RIGHT_HAND = [f"r_hand_{f}_{k}_joint" for f in FINGERS for k in range(4)]
 CONTROLLED = TORSO + RIGHT_ARM + RIGHT_HAND
+# (stiffness N*m/rad, damping N*m*s/rad, torque limit N*m) for the 20 hand joints.
+DEFAULT_FINGER_DRIVE = (20.0, 0.1, 0.3)
+# Solver position iterations for a robot built with finger_drive. Compared on the can lift at a 2 ms
+# timestep: 12 and 32 pass 2/8, 64 and 128 pass 8/8, and 64 is nearly twice as fast as 128.
+DEFAULT_SOLVER_ITERATIONS = 64
 
 
 def read_joint_limits(urdf_path: str) -> dict[str, tuple[float, float]]:
@@ -51,7 +56,7 @@ class ICub:
                  stiffness: float = 400.0, damping: float = 40.0, max_force: float = 30.0,
                  density: float = 1200.0,
                  finger_drive: tuple[float, float, float] | None = None,
-                 solver_iterations: int = 12):
+                 solver_iterations: int = DEFAULT_SOLVER_ITERATIONS):
         """finger_drive = (stiffness, damping, torque limit) gives the 20 hand joints their own
         drive. It builds the robot from colliders only (see builder.py), so no visual meshes."""
         self.urdf_path = os.path.expanduser(urdf_path)
@@ -96,6 +101,11 @@ class ICub:
         if self._links_by_name is not None:
             return self._links_by_name[name]
         return self.art.articulation.link(name)
+
+    @property
+    def body_names(self) -> list[str]:
+        """Every body of a robot built with finger_drive."""
+        return list(self._links_by_name)
 
     def collider(self, name: str):
         """The collider mesh of a URDF link; a ContactSensor attaches to this."""
