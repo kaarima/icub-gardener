@@ -165,6 +165,28 @@ class ICub:
                 out[name] = lo + s * (hi - lo)
         return out
 
+    def grasp_targets(self, fingers: float, thumb_curl: float, opposition: float = 1.0) -> dict[str, float]:
+        """Fingers, thumb curl and thumb opposition set separately, so the thumb can close last.
+
+        All 0 to 1. opposition = 0 lays the thumb flat along the palm; 1 swings it out opposite the
+        fingers (its _0 joint at halfway, as in hand_targets). The curl has to come after the swing:
+        only then does the tip go round the far side of the handle instead of behind it.
+        """
+        f, c, o = (float(np.clip(v, 0.0, 1.0)) for v in (fingers, thumb_curl, opposition))
+        out = {}
+        for name in RIGHT_HAND:
+            i = self.index[name]
+            lo, hi = self.lower[i], self.upper[i]
+            if name == "r_hand_thumb_0_joint":
+                out[name] = lo + 0.5 * o * (hi - lo)
+            elif "thumb" in name:
+                out[name] = lo + c * (hi - lo)
+            elif name.endswith("_0_joint"):
+                out[name] = 0.0
+            else:
+                out[name] = lo + f * (hi - lo)
+        return out
+
     def apply(self) -> None:
         """Send the current targets to the PhysX drives."""
         self.art.set_targets(self.targets.astype(np.float32))

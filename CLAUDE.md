@@ -36,6 +36,10 @@ gardener/sim/robot.py          # ICub class: loads the gardener URDF in PhysX, P
 gardener/sim/builder.py        # rebuilds the robot with add_link so the fingers get their own drive (colliders only)
 scripts/test_grasp_contacts.py # closes the hand on a bar: contact map per hand part, slip when gravity turns on
 scripts/test_can_lift.py       # 4-box can on a table: drag while closing and a real lift, gravity on
+scripts/test_reach_grasp.py    # the full grasp: hand starts away, reach, approach, fingers, thumb last, lift
+gardener/sim/kinematics.py     # FK, IK and table clearance for the arm, from the URDF
+gardener/sim/scene.py          # table and watering can
+gardener/expert/planner.py     # straight-line IK plan to the handle (stands in for cuRobo)
 scripts/make_gardener_urdf.py  # original iCub URDF -> gardener.urdf (locks unused joints, lifts robot on a `world` link)
 scripts/fit_hand_colliders.py  # gardener.urdf -> gardener_hand.urdf (capsule finger colliders, oriented palm box)
 scripts/view_icub.py           # viewer / headless test of an arm + hand sequence
@@ -83,6 +87,8 @@ python scripts/view_icub.py --colliders    # draw collision shapes as yellow wir
   `--colliders` before blaming the controller.
 - `load_articulation` applies **one drive to every joint** and ignores per-joint `effort` and `damping` in
   the URDF. For finger-specific drives use `ICub(..., finger_drive=(stiffness, damping, limit))`.
+- A square handle settles square to the hand. If the hand arrives at another angle, the can turns once it
+  leaves the table, so do not rely on a big hand yaw offset. Keep the arm's range centred on the can's range.
 - `self_collision` is **off**: fingers, palm and thumb pass through each other and only feel other objects.
 - PhysX allows **one world per process**, and contact sensors cannot attach to static bodies.
 - The forearm's bounding box (146x109x74 mm) stopped the arm reaching over any table, so it is now a capsule.
@@ -91,14 +97,16 @@ python scripts/view_icub.py --colliders    # draw collision shapes as yellow wir
 ## Current status (as of November 2026)
 - Robot loads and holds poses; arm + hand sequence runs (`view_icub.py --test` reports errors/speeds).
 - Hand colliders fitted (capsule fingers, oriented palm box).
-- Friction grip works on a bar (`test_grasp_contacts.py`), and `test_can_lift.py` passes 8/8 on a full-size
-  waist-height table, with the can spawned in the open hand (no reach or approach yet). See `docs/log.md`.
+- `test_reach_grasp.py` passes 27/27 over the book's +-25 deg can rotation with the hand starting away from
+  the can: drag 2.9-7.8 mm, wrist_yaw margin at least 7.5 deg. See `docs/log.md`.
+- Grasp recipe: thumb opposed but uncurled during the approach, fingers wrap first, thumb curls last. The torso
+  moves too. The can's handle joins the body at the bottom only and ends below the open thumb tip.
 - Current finger drive: stiffness 20, damping 0.1, limit **0.3 N*m** (`DEFAULT_FINGER_DRIVE`). Physics for
   contact work: **2 ms timestep with 64 solver iterations**, about 1 x real time. 12 or 32 iterations slip.
 
 ## Next steps (in this order)
-1. **Reach and approach**: plan the arm to the grasp pose, with the hand arriving around the handle.
-2. **Rerun the grasp search** for the watering-can handle, and record results.
+1. **Garden scene**: pots and water. This threepp wheel has no PhysX fluid, so water is a Warp simulation.
+2. **Scripted expert**: reach, grasp, transport, pour, return. cuRobo and LeRobot are not installed yet.
 
 ## Rules for working in this repo
 - Run `python scripts/view_icub.py --test` after any change to the robot, URDF scripts or drives, and
@@ -106,3 +114,4 @@ python scripts/view_icub.py --colliders    # draw collision shapes as yellow wir
 - Prefer small, readable scripts with a docstring that says what it does and how to run it.
 - Do not install new large dependencies without asking.
 - Commit working states with clear messages; do not commit generated URDFs or large assets.
+- Commits and PRs carry no AI attribution: no `Co-Authored-By` lines or "Generated with" footers.

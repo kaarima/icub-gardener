@@ -29,7 +29,9 @@ import yaml
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from fit_hand_colliders import BASE_POSITION, quat_to_matrix, rpy_to_matrix, urdf_link_frames  # noqa: E402
+from fit_hand_colliders import BASE_POSITION, quat_to_matrix, urdf_link_frames  # noqa: E402
+from gardener.sim.kinematics import ArmKinematics  # noqa: E402
+from gardener.sim.scene import TABLE_SIZE, CanGeometry, add_table, build_can  # noqa: E402
 from gardener.sim.robot import (DEFAULT_FINGER_DRIVE, DEFAULT_SOLVER_ITERATIONS, FINGERS, ICub, RIGHT_ARM,  # noqa: E402
                                 TORSO, make_world)
 from test_grasp_contacts import PARTS, POSES, link_pose  # noqa: E402
@@ -41,110 +43,9 @@ CAN_SETTLE_S = 0.5    # can rests on the table before the hand closes
 HOLD_S = 1.0          # hold at full closure before lifting
 LIFT_S = 2.0          # duration of the lift
 AFTER_LIFT_S = 3.0    # hold in the air
-TABLE_SIZE = (0.60, 0.80, 0.03)  # x, y, thickness (m)
-TABLE_BACK_X = -0.11  # iCub faces -x; the chest ends at about x = -0.09
 SUCCESS_MIN_RISE = 0.020   # the can must rise at least this much (m)
 SUCCESS_MAX_SLIP = 0.005   # and move at most this much relative to the hand during the lift (m)
 SUCCESS_MAX_TILT = 15.0    # and tilt at most this much in the air (deg)
-
-
-class ArmKinematics:
-    """Forward kinematics of the URDF chain from the base to r_hand, and a small IK solver."""
-
-    def __init__(self, urdf, base):
-        root = ET.parse(urdf).getroot()
-        joints = {j.find("child").get("link"): j for j in root.findall("joint")}
-        chain, name = [], "r_hand"
-        while name in joints:
-            chain.append(joints[name])
-            name = joints[name].find("parent").get("link")
-        self.chain = chain[::-1]
-        self.base = np.array(base, dtype=float)
-
-    def hand(self, q):
-        T = np.eye(4)
-        T[:3, 3] = self.base
-        for j in self.chain:
-            o = j.find("origin")
-            L = np.eye(4)
-            if o is not None:
-                L[:3, :3] = rpy_to_matrix(*[float(v) for v in o.get("rpy", "0 0 0").split()])
-                L[:3, 3] = [float(v) for v in o.get("xyz", "0 0 0").split()]
-            T = T @ L
-            if j.get("type") != "fixed" and j.get("name") in q:
-                a = np.array([float(v) for v in j.find("axis").get("xyz").split()])
-                a /= np.linalg.norm(a)
-                K = np.array([[0, -a[2], a[1]], [a[2], 0, -a[0]], [-a[1], a[0], 0]])
-                M = np.eye(4)
-                t = q[j.get("name")]
-                M[:3, :3] = np.eye(3) + math.sin(t) * K + (1 - math.cos(t)) * K @ K
-                T = T @ M
-        return T
-
-    def solve_lift(self, q0, names, lower, upper, dz):
-        """Joint angles that raise the hand by dz with the same orientation (damped least squares)."""
-        q = dict(q0)
-        T0 = self.hand(q)
-        goal_p, goal_R = T0[:3, 3] + np.array([0, 0, dz]), T0[:3, :3]
-
-        def error(qd):
-            T = self.hand(qd)
-            dR = goal_R @ T[:3, :3].T
-            rot = 0.5 * np.array([dR[2, 1] - dR[1, 2], dR[0, 2] - dR[2, 0], dR[1, 0] - dR[0, 1]])
-            return np.concatenate([goal_p - T[:3, 3], rot])
-
-        for _ in range(30):
-            e = error(q)
-            if np.linalg.norm(e) < 1e-5:
-                break
-            J = np.zeros((6, len(names)))
-            for i, n in enumerate(names):
-                d = dict(q)
-                d[n] += 1e-5
-                J[:, i] = (e - error(d)) / 1e-5
-            dq = J.T @ np.linalg.solve(J @ J.T + 1e-4 * np.eye(6), e)
-            for i, n in enumerate(names):
-                q[n] = float(np.clip(q[n] + dq[i], lower[n], upper[n]))
-        return q, float(np.linalg.norm(error(q)))
-
-
-def box_mesh(size, pos, yaw):
-    mesh = tp.Mesh(tp.BoxGeometry(*map(float, size)), tp.MeshStandardMaterial())
-    mesh.position.set(*map(float, pos))
-    mesh.quaternion.set(0.0, 0.0, math.sin(yaw / 2), math.cos(yaw / 2))
-    return mesh
-
-
-def build_can(world, handle_pos, u, table_z, a, material):
-    """Body on the far side of the handle along horizontal direction u. Returns (articulation, body link, meshes)."""
-    yaw = math.atan2(u[1], u[0])
-    h, hw = a.handle / 1000.0, a.handle_length / 1000.0
-    gap, bd, bw, bh = a.gap / 1000.0, a.body / 1000.0, a.body / 1000.0, a.height / 1000.0
-    arm_t = 0.010  # thickness of the two connecting arms
-    # Hollow-can realism is not needed here: mass goes to the body, little to the handle parts.
-    handle_mass = 0.010
-    arm_len = gap + 0.002
-    body_c = handle_pos + u * (h / 2 + gap + bd / 2)
-    body_c[2] = table_z + bh / 2
-    body_mass = a.mass - handle_mass - 2 * 0.005
-    art = world.create_articulation(fixed_base=False, solver_position_iterations=max(16, a.solver_iters),
-                                    disable_self_collision=True, drive_limits_are_forces=True)
-    body_mesh = box_mesh((bd, bw, bh), body_c, yaw)
-    body = art.add_link(body_mesh, density=body_mass / (bd * bw * bh), material=material)
-    meshes = {"body": body_mesh}
-
-    def locked(name, size, pos, mass):
-        mesh = box_mesh(size, pos, yaw)
-        art.add_link(mesh, parent=body, density=mass / (size[0] * size[1] * size[2]), axis=[0.0, 0.0, 1.0],
-                     anchor=[float(v) for v in pos], lower=-1e-5, upper=1e-5, material=material)
-        meshes[name] = mesh
-
-    locked("handle", (h, h, hw), handle_pos, handle_mass)
-    for name, sign in (("arm_top", 1), ("arm_bottom", -1)):
-        p = handle_pos + u * (h / 2 + gap / 2) + np.array([0.0, 0.0, sign * (hw / 2 - arm_t / 2)])
-        locked(name, (arm_len, h, arm_t), p, 0.005)
-    art.finalize()
-    return art, body, meshes
 
 
 def main():
@@ -259,13 +160,12 @@ def main():
     bottom_clearance = (args.height - args.handle_length) / 2000.0
     table_z = handle_pos[2] - args.handle_length / 2000.0 - bottom_clearance
     h, gap, bd = args.handle / 1000.0, args.gap / 1000.0, args.body / 1000.0
-    # A full-size table: its back edge stops just in front of the chest, and the arm reaches over it.
-    table_c = np.array([TABLE_BACK_X - TABLE_SIZE[0] / 2, 0.0, table_z - TABLE_SIZE[2] / 2])
-    table_mesh = box_mesh(TABLE_SIZE, table_c, 0.0)
     print(f"table: {TABLE_SIZE[0] * 1000:.0f} x {TABLE_SIZE[1] * 1000:.0f} mm, top at z = {table_z * 1000:.0f} mm")
     material = world.create_material(args.friction, args.friction, 0.0, friction_combine="min")
-    world.add_static(table_mesh, material=material)
-    art_can, body, can_meshes = build_can(world, handle_pos, u, table_z, args, material)
+    add_table(world, table_z, material)
+    geometry = CanGeometry(args.handle / 1000.0, args.handle_length / 1000.0, args.gap / 1000.0, args.body / 1000.0,
+                           args.height / 1000.0, args.mass)
+    body, can_meshes = build_can(world, handle_pos, u, table_z, geometry, material, args.solver_iters)
     can_sensors = {n: tp.ContactSensor(m) for n, m in can_meshes.items()}
     for s in can_sensors.values():
         world.register_sensor(s)
