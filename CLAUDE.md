@@ -85,20 +85,19 @@ python scripts/view_icub.py --colliders    # draw collision shapes as yellow wir
   the URDF. For finger-specific drives use `ICub(..., finger_drive=(stiffness, damping, limit))`.
 - `self_collision` is **off**: fingers, palm and thumb pass through each other and only feel other objects.
 - PhysX allows **one world per process**, and contact sensors cannot attach to static bodies.
-- The forearm collider is a **large box (146x74x109 mm)** and catches on tables near the hand. Watch the
-  `r_forearm` contact line, and check that the hand-open control still rises the full amount.
+- The forearm's bounding box (146x109x74 mm) stopped the arm reaching over any table, so it is now a capsule.
+  `test_can_lift.py` reports any robot body outside the hand that touches something: that should say none.
 
 ## Current status (as of November 2026)
 - Robot loads and holds poses; arm + hand sequence runs (`view_icub.py --test` reports errors/speeds).
 - Hand colliders fitted (capsule fingers, oriented palm box).
-- Friction grip works on a bar (`test_grasp_contacts.py`), and `test_can_lift.py` passes 16/16 at 0.3 and
-  1 N*m with the can spawned in the open hand (no reach or approach yet). See `docs/log.md`.
-- Current finger drive: stiffness 20, damping 0.1, limit **1 N*m** (Karima's choice for now). Contact tests
-  with a firm grip need a **0.5 ms** timestep; at 2 ms the grip disturbs the arm by about 2 deg.
+- Friction grip works on a bar (`test_grasp_contacts.py`), and `test_can_lift.py` passes 8/8 on a full-size
+  waist-height table, with the can spawned in the open hand (no reach or approach yet). See `docs/log.md`.
+- Current finger drive: stiffness 20, damping 0.1, limit **0.3 N*m** (`DEFAULT_FINGER_DRIVE`). Physics for
+  contact work: **2 ms timestep with 64 solver iterations**, about 1 x real time. 12 or 32 iterations slip.
 
 ## Next steps (in this order)
-1. **Real table and forearm**: the big forearm collider catches on anything near the hand. Fit a smaller
-   collider, then lift from a full-size table.
+1. **Reach and approach**: plan the arm to the grasp pose, with the hand arriving around the handle.
 2. **Rerun the grasp search** for the watering-can handle, and record results.
 
 ## Rules for working in this repo
