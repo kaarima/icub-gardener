@@ -132,13 +132,13 @@ def load_shapes(urdf_path: str) -> list[dict]:
         return json.load(f)
 
 
-def build_articulation(world, urdf_path: str, base_position, drive_for) -> tuple:
+def build_articulation(world, urdf_path: str, base_position, drive_for, solver_iterations: int = 12) -> tuple:
     """Build the robot in `world`. drive_for(joint name) returns (stiffness, damping, max_force).
 
     Returns (articulation, meshes, joint_names, links_by_name, meshes_by_name).
     """
     base = np.array(base_position, dtype=float)
-    art = world.create_articulation(fixed_base=True, solver_position_iterations=12,
+    art = world.create_articulation(fixed_base=True, solver_position_iterations=int(solver_iterations),
                                     disable_self_collision=True, drive_limits_are_forces=True)
     links, meshes, names = {}, {}, []
     for e in load_shapes(urdf_path):
