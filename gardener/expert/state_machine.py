@@ -44,6 +44,7 @@ OPEN_HAND_POINTS = np.array([[-0.129, 0.005, 0.064], [-0.138, 0.006, 0.043], [-0
                              [0.013, 0.0, 0.047], [0.013, 0.0, -0.022], [-0.051, -0.066, 0.077], [-0.042, -0.035, 0.055]])
 OPEN_HAND_RADIUS = 0.010
 FLOW_LEAD_S = 0.5           # s of the current flow still to come after the can starts tilting back
+FLOW_LEAD_LOT_S = 0.2       # a big pour flows fast, so the longer lead would stop it well short of its target
 TILT_BACK_RATE = 45.0       # deg/s; quick, so the flow stops soon
 MIN_POUR_MARGIN_DEG = 5.0   # wrist_yaw must keep this much room all through the pour
 MIN_SCENERY_FORCE = 10.0    # N. Sensors cannot tell a light pot contact from the fingers touching the can body
@@ -416,9 +417,10 @@ def run_episode(urdf: str, config_path: str, poses_path: str, instruction: str, 
     can_now = pre_pour                # tilt about the target, with the grip as measured
     q = measured_q()
     T_hand_in_can = np.linalg.inv(can_frame()) @ kin.hand(q)
-    rate = math.radians(cfg["expert"]["tilt_rate"])
+    rate = math.radians(cfg["expert"]["tilt_rate_lot" if amount == "lot" else "tilt_rate"])
     max_tilt = math.radians(min(cfg["expert"]["max_tilt"], furthest_tilt))
     tilt, poured = 0.0, 0.0
+    pour_started = state["sim"]
     spout = can_now @ np.append(SPOUT, 1.0)
     say(f"pour start: spout {np.round((spout[:3] - [pot.x, pot.y, rim]) * 1000)} mm from the pot's rim centre, "
         f"can up axis {np.round(can_now[:3, 2], 2)}, spout direction {np.round(can_now[:3, 0], 2)}, planned heading {math.degrees(heading):.0f} deg")
@@ -432,13 +434,14 @@ def run_episode(urdf: str, config_path: str, poses_path: str, instruction: str, 
         # amount the current flow would still deliver.
         window = int(0.5 / DT)
         flow = (history[-1] - history[-window]) / (window * DT) if len(history) >= window else 0.0
-        if poured + flow * FLOW_LEAD_S >= goal_fraction:
+        lead = FLOW_LEAD_LOT_S if amount == "lot" else FLOW_LEAD_S
+        if poured + flow * lead >= goal_fraction:
             break
         if tilt < max_tilt:
             # Pause while water is flowing, so the amount can be judged.
             flowing = counts()["air"] > 0.01 * n_total
-            # A big pour has time to spare: it only needs to slow down near its target.
-            hurry = amount == "lot" and poured < goal_fraction - 0.15
+            # A big pour must fit the time limit: it only slows down right at its target.
+            hurry = amount == "lot" and poured < goal_fraction - 0.05
             tilt = min(max_tilt, tilt + rate * DT * (0.25 if flowing and not hurry else 1.0))
         else:
             hold_time += DT
@@ -450,6 +453,7 @@ def run_episode(urdf: str, config_path: str, poses_path: str, instruction: str, 
             res.failure = "grasp failure: dropped while pouring"
             return finish(res, state, wall0, counts(), contacts)
     spout = can_frame() @ np.append(SPOUT, 1.0)
+    say(f"pour timing: started at {pour_started:.1f} s, stopped after {state['sim'] - pour_started:.1f} s, of which {hold_time:.1f} s held at full tilt")
     say(f"pour: stopped at tilt {math.degrees(tilt):.0f} deg with {poured * 100:.0f}% out; at the stop the spout is "
         f"{np.round((spout[:3] - [pot.x, pot.y, rim]) * 1000)} mm from the pot's rim centre, can up axis {np.round(can_frame()[:3, 2], 2)}")
     res.stage_reached = state["phase"] = "tilt back"

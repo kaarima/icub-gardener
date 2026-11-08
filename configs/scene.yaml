@@ -18,6 +18,7 @@ expert:
   a_lot: [0.60, 0.80]
   max_tilt: 88.0         # deg
   tilt_rate: 25.0        # deg/s
+  tilt_rate_lot: 35.0    # deg/s; a low-fill can must reach full tilt and wait, and has to fit the time limit
 success:
   min_water_in_target: 0.70
   max_can_tilt: 10.0     # deg, once the can is back on the table
