@@ -36,6 +36,7 @@ SPOUT_DROP = 0.025          # how far the spout notch sits below the walls' top
 USABLE_HEIGHT = INNER_HEIGHT - SPOUT_DROP   # water above this would run out of the notch at rest
 FLOOR = 0.010
 SPOUT = np.array([0.030, 0.0, USABLE_HEIGHT])  # the notch in the can's frame: the pivot for pouring
+CARRY_ABOVE_RIM = 0.040     # the can's floor above the rims while crossing the table, before descending to pour
 SPOUT_ABOVE_RIM = 0.075     # the upright can's floor then clears the rim by 15 mm
 # Where the open hand reaches, in the hand frame (m): fingertips, finger middles, palm corners and the opposed thumb.
 OPEN_HAND_POINTS = np.array([[-0.129, 0.005, 0.064], [-0.138, 0.006, 0.043], [-0.140, 0.012, 0.019], [-0.135, 0.011, 0.002],
@@ -346,20 +347,26 @@ def run_episode(urdf: str, config_path: str, poses_path: str, instruction: str, 
         if furthest_tilt < 60:
             break
         pre_pour = upright_over_pot(pot, heading)
+        # Up first, across high, then down: the can and arm cross above the pots' rims.
         above = now.copy()
-        above[2, 3] = pre_pour[2, 3]
+        above[2, 3] = rim + CARRY_ABOVE_RIM
+        high_over_pot = pre_pour.copy()
+        high_over_pot[2, 3] = above[2, 3]
         path1, e1 = can_path(now, above, q)
-        path2, e2 = can_path(above, pre_pour, path1[-1], points=24)
-        if (max(e1, e2) <= 0.01 and all(arm_clear_at(kin, q_, all_pots, pot_outer, rim) for q_ in path1 + path2)
-                and all(arm_clear_of_can(kin, q_, T_hand_in_can, can) for q_ in path1 + path2)):
+        path2, e2 = can_path(above, high_over_pot, path1[-1], points=24)
+        path_down, e3 = can_path(high_over_pot, pre_pour, path2[-1], points=6)
+        whole = path1 + path2 + path_down
+        if (max(e1, e2, e3) <= 0.01 and all(arm_clear_at(kin, q_, all_pots, pot_outer, rim) for q_ in whole)
+                and all(arm_clear_of_can(kin, q_, T_hand_in_can, can) for q_ in whole)):
             picked = heading
             break
     if picked is None:
         res.failure = "no transport plan"
         return finish(res, state, wall0, counts(), contacts)
-    say(f"transport plan: heading {math.degrees(heading):.0f} deg, tilt available {furthest_tilt} deg, error {max(e1, e2) * 1000:.1f} mm")
-    follow(path1, 1.5)
-    follow(path2, 4.0)
+    say(f"transport plan: heading {math.degrees(heading):.0f} deg, tilt available {furthest_tilt} deg, error {max(e1, e2, e3) * 1000:.1f} mm")
+    follow(path1, 1.8)
+    follow(path2, 3.2)
+    follow(path_down, 0.6)
     hold(0.5)
     # The can may have turned a little in the hand on the way: measure the grip and move the spout onto the target.
     for _ in range(2):
@@ -434,8 +441,9 @@ def run_episode(urdf: str, config_path: str, poses_path: str, instruction: str, 
     q = measured_q()
     T_hand_in_can = np.linalg.inv(now) @ kin.hand(q)
     # Retrace the transport's joint path: it is known to be reachable and clear of the pots.
-    follow(path2[::-1], 4.0)
-    follow(path1[::-1], 1.5)
+    follow(path_down[::-1], 0.6)
+    follow(path2[::-1], 3.2)
+    follow(path1[::-1], 1.8)
     hold(0.3)
     now = can_frame()
     q = measured_q()
