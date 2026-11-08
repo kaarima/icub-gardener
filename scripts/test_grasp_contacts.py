@@ -48,12 +48,6 @@ def link_pose(link):
     return T
 
 
-def same_pose(a, b):
-    pa, pb, qa, qb = a.position, b.position, a.quaternion, b.quaternion
-    return (abs(pa.x - pb.x) + abs(pa.y - pb.y) + abs(pa.z - pb.z) < 1e-9 and
-            abs(qa.w - qb.w) + abs(qa.x - qb.x) + abs(qa.y - qb.y) + abs(qa.z - qb.z) < 1e-9)
-
-
 def make_bar(T_world, size_m, length_m):
     """A box mesh placed at T_world, with its long side along the local z axis."""
     mesh = tp.Mesh(tp.BoxGeometry(size_m, size_m, length_m), tp.MeshStandardMaterial())
@@ -86,26 +80,29 @@ def main():
                     help="final hand closure, 0 to 1. 0 is a control: the bar must fall")
     ap.add_argument("--close-time", type=float, default=2.0, help="seconds from open to fully closed")
     ap.add_argument("--max-force", type=float, default=30.0, help="drive limit for all joints")
+    ap.add_argument("--finger-limit", type=float, default=None,
+                    help="torque limit for the 20 hand joints only (N*m); uses the collider-only robot build")
+    ap.add_argument("--finger-stiffness", type=float, default=20.0, help="used with --finger-limit (N*m/rad)")
+    ap.add_argument("--finger-damping", type=float, default=0.1, help="used with --finger-limit (N*m*s/rad)")
     args = ap.parse_args()
 
     urdf = os.path.expanduser(args.urdf)
     world = make_world()
-    robot = ICub(world, urdf, base_position=BASE_POSITION, max_force=args.max_force)
-    art = robot.art.articulation
-    links, meshes = list(art.links), list(robot.meshes)
+    finger_drive = None
+    if args.finger_limit is not None:
+        finger_drive = (args.finger_stiffness, args.finger_damping, args.finger_limit)
+    robot = ICub(world, urdf, base_position=BASE_POSITION, max_force=args.max_force, finger_drive=finger_drive)
 
     # The URDF hand frame relative to the PhysX COM frame is fixed, so measure it once at the zero pose.
     world.step(1e-4)
     root = ET.parse(urdf).getroot()
-    hand_link = art.link("r_hand")
+    hand_link = robot.link("r_hand")
     T_com_to_urdf = np.linalg.inv(link_pose(hand_link)) @ urdf_link_frames(root, BASE_POSITION)["r_hand"]
 
     # One contact sensor on every hand part (self-collision is off, so they only feel the bar).
     sensors = {}
     for name in PARTS:
-        target = art.link(name)
-        i = next(k for k, l in enumerate(links) if same_pose(l, target))
-        sensors[name] = tp.ContactSensor(meshes[i])
+        sensors[name] = tp.ContactSensor(robot.collider(name))
         world.register_sensor(sensors[name])
 
     with open(POSES) as f:
