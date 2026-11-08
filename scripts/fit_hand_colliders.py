@@ -34,7 +34,7 @@ HAND_LINKS = ["r_hand"] + [f"r_hand_{f}_{k}" for f in FINGERS for k in range(4)]
 RADIUS_PERCENTILE = 80   # capsule radius = this percentile of the points' distance to the axis
 # Arm links that also get a capsule, with their own radius percentile. The forearm's bounding box
 # (146 x 109 x 74 mm) stops the arm reaching over a table; its mesh is close to a 43 mm radius capsule.
-ARM_CAPSULES = {"r_forearm": 95}
+ARM_CAPSULES = {"r_forearm": 95, "r_upper_arm": 95}
 BOX_PERCENTILE = 97      # palm box half-sizes = this percentile of |coordinate| along each axis
 BASE_POSITION = (0.0, 0.0, 0.05)  # must match ICub's default base_position
 

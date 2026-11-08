@@ -23,8 +23,10 @@ chapter before designing a new stage.
 - Laptop: i5-12500H, 16 GB RAM, **RTX 3050 Laptop GPU with only 4 GB VRAM**, Ubuntu 22.04 (dual boot).
 - Keep GPU memory small: small batches, no huge particle counts on the laptop. Heavy training goes to
   free cloud GPUs (Kaggle, Lightning AI).
-- Python environment: conda env `gardener` (Python 3.10), threepp 2026.10.11. TODO (Karima: confirm how
-  threepp was installed).
+- Python environment: conda env `gardener` (Python 3.10), threepp 2026.10.11 for simulation. TODO (Karima: confirm
+  how threepp was installed). Conda env `gardener-train` holds LeRobot 0.4.4 with torch 2.10: installing LeRobot into
+  `gardener` would downgrade torch and change the CUDA bindings. The stages share files, so two envs are fine.
+  Your ROS `PYTHONPATH` leaks old package metadata into both: trust `module.__file__`, not `pip` listings.
 
 ## Stack
 threepp (3D scene, rendering, PhysX bindings, URDF articulation) · NVIDIA PhysX · NVIDIA Warp (water
@@ -74,6 +76,9 @@ python scripts/view_icub.py --colliders    # draw collision shapes as yellow wir
   limits (±1e-4 rad) and always get target 0.
 - Generated URDFs are always written to a new file; source URDFs are never edited in place.
 
+- Episode timeout is **45 s** (`configs/scene.yaml`), not the book's example of 30 s: episodes take about 36-43 s,
+  of which 3.5 s is setup. Treat this as a known departure from the book, and report it with results.
+
 ## Things we learned the hard way (PhysX / threepp gotchas)
 - threepp turns each link's **collision mesh into a box (its bounding box)**, so fingers were blocks and
   the palm one big block. That is why `fit_hand_colliders.py` exists.
@@ -89,6 +94,8 @@ python scripts/view_icub.py --colliders    # draw collision shapes as yellow wir
   the URDF. For finger-specific drives use `ICub(..., finger_drive=(stiffness, damping, limit))`.
 - A square handle settles square to the hand. If the hand arrives at another angle, the can turns once it
   leaves the table, so do not rely on a big hand yaw offset. Keep the arm's range centred on the can's range.
+- Pots are solid now. Checks that passed before they were solid did not count hits: forearm, can and hand all
+  passed through pots unnoticed. The held can is also an obstacle: the bending wrist swings the forearm into it.
 - `self_collision` is **off**: fingers, palm and thumb pass through each other and only feel other objects.
 - PhysX allows **one world per process**, and contact sensors cannot attach to static bodies.
 - The forearm's bounding box (146x109x74 mm) stopped the arm reaching over any table, so it is now a capsule.

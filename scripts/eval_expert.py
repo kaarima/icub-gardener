@@ -34,11 +34,13 @@ def run(job):
     water = re.search(r"poured (\d+)% of the can, (\d+)% of that in the target pot, spill (\d+)%, wrong pot (\w+), amount in band (\w+)", o)
     can = re.search(r"drag ([0-9.]+) mm, lift ([-0-9.]+) mm, final tilt ([0-9.]+) deg, placed (\d+) mm", o)
     wrist = re.search(r"wrist_yaw margin ([-0-9.]+) deg; ([0-9.]+) s simulated in ([0-9.]+) s", o)
+    spout = re.search(r"spout ([0-9.]+) mm off target, (\d+)% lost", o)
+    contact = re.search(r"layouts redrawn (\d+); contacts: (.*)", o)
     setup = re.search(r"can yaw ([-+0-9.]+) deg, shift \[\s*([-0-9.]+)\s+([-0-9.]+)\s*\] mm, (\d+)% full", o)
     return dict(seed=seed, text=text, ok=result[1] == "SUCCESS", failure="" if result[1] == "SUCCESS" else result[1][8:], stage=result[2],
                 poured=int(water[1]), target=int(water[2]), spill=int(water[3]), wrong=water[4] == "True", amount=water[5] == "True",
                 drag=float(can[1]), lift=float(can[2]), tilt=float(can[3]), placed=int(can[4]), margin=float(wrist[1]),
-                sim=float(wrist[2]), wall=float(wrist[3]), yaw=float(setup[1]), sx=float(setup[2]), sy=float(setup[3]), fill=int(setup[4]))
+                sim=float(wrist[2]), wall=float(wrist[3]), spout=float(spout[1]), lost=int(spout[2]), redrawn=int(contact[1]), contacts=contact[2], yaw=float(setup[1]), sx=float(setup[2]), sy=float(setup[3]), fill=int(setup[4]))
 
 
 def wilson(k, n):
@@ -62,19 +64,23 @@ def main():
     with cf.ThreadPoolExecutor(args.workers) as ex:
         res = list(ex.map(run, jobs))
 
-    print(f"{'seed':>4} {'instruction':<42}{'result':<8}{'yaw':>6}{'dx':>5}{'dy':>5}{'fill':>5}{'drag':>6}{'lift':>6}{'pour%':>6}{'tgt%':>5}{'band':>5}{'tilt':>5}{'place':>6}{'marg':>6}  failure")
+    print(f"{'seed':>4} {'instruction':<42}{'result':<8}{'yaw':>6}{'dx':>5}{'dy':>5}{'fill':>5}{'drag':>6}{'lift':>6}{'pour%':>6}{'tgt%':>5}{'band':>5}{'tilt':>5}{'place':>6}{'marg':>6}{'spout':>6}{'lost':>5}  failure")
     for r in res:
         if "drag" not in r:
             print(f"{r['seed']:>4} {r['text']:<42}CRASH   {r.get('raw', '')}")
             continue
         print(f"{r['seed']:>4} {r['text']:<42}{'ok' if r['ok'] else 'FAIL':<8}{r['yaw']:6.1f}{r['sx']:5.0f}{r['sy']:5.0f}{r['fill']:5d}{r['drag']:6.1f}{r['lift']:6.1f}"
-              f"{r['poured']:6d}{r['target']:5d}{'yes' if r['amount'] else 'no':>5}{r['tilt']:5.1f}{r['placed']:6d}{r['margin']:6.1f}  {r['failure']} (reached {r['stage']})" if not r['ok'] else
+              f"{r['poured']:6d}{r['target']:5d}{'yes' if r['amount'] else 'no':>5}{r['tilt']:5.1f}{r['placed']:6d}{r['margin']:6.1f}{r['spout']:6.1f}{r['lost']:5d}  {r['failure']} (reached {r['stage']})" if not r['ok'] else
               f"{r['seed']:>4} {r['text']:<42}{'ok':<8}{r['yaw']:6.1f}{r['sx']:5.0f}{r['sy']:5.0f}{r['fill']:5d}{r['drag']:6.1f}{r['lift']:6.1f}"
-              f"{r['poured']:6d}{r['target']:5d}{'yes' if r['amount'] else 'no':>5}{r['tilt']:5.1f}{r['placed']:6d}{r['margin']:6.1f}")
+              f"{r['poured']:6d}{r['target']:5d}{'yes' if r['amount'] else 'no':>5}{r['tilt']:5.1f}{r['placed']:6d}{r['margin']:6.1f}{r['spout']:6.1f}{r['lost']:5d}")
     n = len(res)
     k = sum(r["ok"] for r in res)
     lo, hi = wilson(k, n)
     done = [r for r in res if "drag" in r]
+    for r in done:
+        if r["contacts"] != "none":
+            print(f"seed {r['seed']} contacts: {r['contacts']}")
+    print(f"\nscene layouts redrawn because the can overlapped a pot: {sum(r['redrawn'] for r in done)} over {len(done)} scenes")
     print(f"\nSUCCESS: {k}/{n} = {100 * k / n:.0f}% (95% interval {100 * lo:.0f}-{100 * hi:.0f}%)")
     ok = [r for r in done if r["ok"]]
     if ok:
