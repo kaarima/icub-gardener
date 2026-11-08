@@ -1,0 +1,23 @@
+# The garden scene and its randomisation (book section 7.4). Lengths in metres, angles in degrees.
+pots:
+  # iCub faces -x, and its right side is +y.
+  left: {x: -0.35, y: -0.10}
+  right: {x: -0.35, y: 0.25}
+randomise:
+  can_position: 0.08     # +- in x and y
+  can_yaw: 25.0          # +-
+  pot_position: 0.05     # +- in x and y
+  water_fill: [0.40, 0.90]
+water:
+  particles: 2000
+can:
+  empty_mass: 0.10       # kg. Water is added at the start, and its loss during the pour is not modelled.
+expert:
+  little: [0.20, 0.30]   # fraction of the can's water to pour
+  a_lot: [0.60, 0.80]
+  max_tilt: 88.0         # deg
+  tilt_rate: 25.0        # deg/s
+success:
+  min_water_in_target: 0.70
+  max_can_tilt: 10.0     # deg, once the can is back on the table
+  timeout: 45.0          # s
