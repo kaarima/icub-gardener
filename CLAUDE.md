@@ -79,6 +79,10 @@ python scripts/view_icub.py --colliders    # draw collision shapes as yellow wir
 - Episode timeout is **45 s** (`configs/scene.yaml`), not the book's example of 30 s: episodes take about 36-43 s,
   of which 3.5 s is setup. Treat this as a known departure from the book, and report it with results.
 
+- **Known gap, narrow can layout:** layouts where the can or open hand would meet a pot are redrawn, about 14 times
+  per scene, and 41 of 50 evaluation scenes have the can 20 mm or more towards iCub. Results and any policy trained
+  on these demos only cover that narrower range, not the book's full +-8 cm. cuRobo comes later to restore it.
+
 ## Things we learned the hard way (PhysX / threepp gotchas)
 - threepp turns each link's **collision mesh into a box (its bounding box)**, so fingers were blocks and
   the palm one big block. That is why `fit_hand_colliders.py` exists.
