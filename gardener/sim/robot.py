@@ -15,6 +15,8 @@ import numpy as np
 import threepp as tp
 from threepp.urdf import UrdfArticulation
 
+from gardener.sim.builder import build_articulation
+
 TORSO = ["torso_pitch", "torso_roll", "torso_yaw"]
 RIGHT_ARM = [
     "r_shoulder_pitch", "r_shoulder_roll", "r_shoulder_yaw",
@@ -47,19 +49,32 @@ class ICub:
     def __init__(self, world: tp.PhysxWorld, urdf_path: str, *,
                  base_position=(0.0, 0.0, 0.05),
                  stiffness: float = 400.0, damping: float = 40.0, max_force: float = 30.0,
-                 density: float = 1200.0):
+                 density: float = 1200.0,
+                 finger_drive: tuple[float, float, float] | None = None,
+                 solver_iterations: int = 12):
+        """finger_drive = (stiffness, damping, torque limit) gives the 20 hand joints their own
+        drive. It builds the robot from colliders only (see builder.py), so no visual meshes."""
         self.urdf_path = os.path.expanduser(urdf_path)
-        # world.load_articulation (instead of threepp.urdf.load_articulation)
-        # because only it accepts drive_limits_are_forces: without it PhysX
-        # treats max_force as an impulse per 2 ms substep, i.e. ~500x too
-        # strong, and the fingers slam objects away.
-        art, meshes, joint_names = world.load_articulation(
-            self.urdf_path, fixed_base=True,
-            base_position=tuple(float(x) for x in base_position),
-            default_density=float(density), stiffness=float(stiffness),
-            damping=float(damping), max_force=float(max_force),
-            drive_limits_are_forces=True,
-        )
+        self._links_by_name = None
+        if finger_drive is None:
+            # world.load_articulation (instead of threepp.urdf.load_articulation)
+            # because only it accepts drive_limits_are_forces: without it PhysX
+            # treats max_force as an impulse per 2 ms substep, i.e. ~500x too
+            # strong, and the fingers slam objects away.
+            art, meshes, joint_names = world.load_articulation(
+                self.urdf_path, fixed_base=True,
+                base_position=tuple(float(x) for x in base_position),
+                default_density=float(density), stiffness=float(stiffness),
+                damping=float(damping), max_force=float(max_force),
+                drive_limits_are_forces=True,
+            )
+        else:
+            hand = set(RIGHT_HAND)
+            others = (float(stiffness), float(damping), float(max_force))
+            art, meshes, joint_names, self._links_by_name, self._meshes_by_name = build_articulation(
+                world, self.urdf_path, base_position,
+                lambda joint: tuple(map(float, finger_drive)) if joint in hand else others,
+                solver_iterations)
         self.art = UrdfArticulation(art, meshes, joint_names, world)
         self.names = list(self.art.joint_names)
         self.index = {n: i for i, n in enumerate(self.names)}
@@ -76,6 +91,25 @@ class ICub:
         self.controlled_idx = np.array([self.index[n] for n in CONTROLLED])
 
     # ---- reading the state ----------------------------------------------
+    def link(self, name: str):
+        """The PhysX link for a URDF link name, whichever way the robot was built."""
+        if self._links_by_name is not None:
+            return self._links_by_name[name]
+        return self.art.articulation.link(name)
+
+    def collider(self, name: str):
+        """The collider mesh of a URDF link; a ContactSensor attaches to this."""
+        if self._links_by_name is not None:
+            return self._meshes_by_name[name]
+        target, links = self.link(name), list(self.art.articulation.links)
+        pa, qa = target.position, target.quaternion
+        for mesh, other in zip(self.art.meshes, links):
+            pb, qb = other.position, other.quaternion
+            if (abs(pa.x - pb.x) + abs(pa.y - pb.y) + abs(pa.z - pb.z) < 1e-9 and
+                    abs(qa.w - qb.w) + abs(qa.x - qb.x) + abs(qa.y - qb.y) + abs(qa.z - qb.z) < 1e-9):
+                return mesh
+        raise KeyError(name)
+
     @property
     def num_dof(self) -> int:
         return len(self.names)
