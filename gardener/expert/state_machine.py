@@ -47,7 +47,7 @@ OPEN_HAND_RADIUS = 0.010
 FLOW_LEAD_S = 0.5           # s of the current flow still to come after the can starts tilting back
 FLOW_LEAD_LITTLE_S = 0.25   # a small pour stopped short of its 20-30% band with the full lead
 FLOW_LEAD_LOT_S = 0.2       # a big pour flows fast, so the longer lead would stop it well short of its target
-MAX_JOINT_STEP = math.radians(1.0)   # per control step, while tilting back: at most 2 deg per recorded frame
+MAX_JOINT_STEP = math.radians(1.0)   # per control step, so at most 2 deg per frame at 25 fps
 TILT_BACK_RATE = 45.0       # deg/s; quick, so the flow stops soon
 MIN_POUR_MARGIN_DEG = 5.0   # wrist_yaw must keep this much room all through the pour
 MIN_SCENERY_FORCE = 10.0    # N. Sensors cannot tell a light pot contact from the fingers touching the can body
@@ -290,6 +290,12 @@ def run_episode(urdf: str, config_path: str, poses_path: str, instruction: str, 
 
     def step():
         now_targets = np.array([robot.targets[robot.index[n]] for n in PLAN_JOINTS])
+        if recent_targets:
+            # The arm's targets may never snap: demonstrations teach a policy every move in them.
+            limited = recent_targets[-1] + np.clip(now_targets - recent_targets[-1], -MAX_JOINT_STEP, MAX_JOINT_STEP)
+            if not np.array_equal(limited, now_targets):
+                robot.set_targets(dict(zip(PLAN_JOINTS, limited.tolist())))
+                now_targets = limited
         if len(recent_targets) == 2:
             jump = math.degrees(float(np.abs(now_targets - recent_targets.pop(0)).max()))
             if jump > res.largest_target_jump_deg:
