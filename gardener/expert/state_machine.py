@@ -45,6 +45,7 @@ OPEN_HAND_POINTS = np.array([[-0.129, 0.005, 0.064], [-0.138, 0.006, 0.043], [-0
                              [0.013, 0.0, 0.047], [0.013, 0.0, -0.022], [-0.051, -0.066, 0.077], [-0.042, -0.035, 0.055]])
 OPEN_HAND_RADIUS = 0.010
 FLOW_LEAD_S = 0.5           # s of the current flow still to come after the can starts tilting back
+FLOW_LEAD_LITTLE_S = 0.25   # a small pour stopped short of its 20-30% band with the full lead
 FLOW_LEAD_LOT_S = 0.2       # a big pour flows fast, so the longer lead would stop it well short of its target
 MAX_JOINT_STEP = math.radians(1.0)   # per control step, while tilting back: at most 2 deg per recorded frame
 TILT_BACK_RATE = 45.0       # deg/s; quick, so the flow stops soon
@@ -474,7 +475,7 @@ def run_episode(urdf: str, config_path: str, poses_path: str, instruction: str, 
         # amount the current flow would still deliver.
         window = int(0.5 / DT)
         flow = (history[-1] - history[-window]) / (window * DT) if len(history) >= window else 0.0
-        lead = FLOW_LEAD_LOT_S if amount == "lot" else FLOW_LEAD_S
+        lead = {"lot": FLOW_LEAD_LOT_S, "little": FLOW_LEAD_LITTLE_S}.get(amount, FLOW_LEAD_S)
         if poured + flow * lead >= goal_fraction:
             break
         if tilt < max_tilt:
