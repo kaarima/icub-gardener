@@ -4,6 +4,7 @@
 Run in the gardener-train env, with your ROS PYTHONPATH cleared so its old packages do not get imported:
   env -u PYTHONPATH ~/miniconda3/envs/gardener-train/bin/python scripts/to_lerobot.py
 
+Frames go straight into the video encoder, with no PNG files in between (--png uses the old way, to compare).
 Nothing is uploaded. The dataset is written to data/lerobot/gardener_v1, replacing any older copy there.
 """
 import argparse
@@ -22,6 +23,7 @@ def main():
     ap.add_argument("--raw", default=os.path.join(ROOT, "data", "raw"))
     ap.add_argument("--out", default=os.path.join(ROOT, "data", "lerobot", "gardener_v1"))
     ap.add_argument("--repo-id", default="kaarima/icub_gardener_v1", help="dataset name; not uploaded by this script")
+    ap.add_argument("--png", action="store_true", help="write each frame as a PNG first, as LeRobot does by default")
     args = ap.parse_args()
 
     files = sorted(glob.glob(os.path.join(args.raw, "episode_*.npz")))
@@ -40,15 +42,18 @@ def main():
         shutil.rmtree(args.out)
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
     ds = LeRobotDataset.create(repo_id=args.repo_id, fps=int(first["fps"]), features=features, root=args.out,
-                               robot_type="icub_upper_body", use_videos=True)
+                               robot_type="icub_upper_body", use_videos=True, streaming_encoding=not args.png)
     for path in files:
         e = np.load(path)
         task = str(e["instruction"])
-        for i in range(len(e["state"])):
-            ds.add_frame({**{f"observation.images.{c}": e[c][i] for c in cameras},
-                          "observation.state": e["state"][i], "action": e["action"][i], "task": task})
+        # Read each camera once: e[c] unpacks the whole array from the file every time it is used.
+        frames = {c: e[c] for c in cameras}
+        state, action = e["state"], e["action"]
+        for i in range(len(state)):
+            ds.add_frame({**{f"observation.images.{c}": frames[c][i] for c in cameras},
+                          "observation.state": state[i], "action": action[i], "task": task})
         ds.save_episode()
-        print(f"{os.path.basename(path)}: {len(e['state'])} frames, {task!r}", flush=True)
+        print(f"{os.path.basename(path)}: {len(state)} frames, {task!r}", flush=True)
     ds.finalize()
     print(f"dataset in {args.out}: {ds.meta.total_episodes} episodes, {ds.meta.total_frames} frames")
 

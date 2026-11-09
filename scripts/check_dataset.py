@@ -51,6 +51,7 @@ def main():
         e = np.load(path)
         n, text = len(e["state"]), str(e["instruction"])
         cameras = [c for c in ("eye", "wrist", "scene") if c in e]
+        frames = {c: e[c] for c in cameras}     # e[c] unpacks the whole array from the file every time it is used
         tasks[text] = tasks.get(text, 0) + 1
         start = index
         # Numbers, every frame, through the parquet tables only (no video decoding, so this is quick).
@@ -66,7 +67,7 @@ def main():
             if item["task"] != text:
                 problems.append(f"episode {ep} frame {i}: task {item['task']!r}, expected {text!r}")
             for c in cameras:
-                worst_psnr = min(worst_psnr, psnr(to_uint8(item[f"observation.images.{c}"]), e[c][i]))
+                worst_psnr = min(worst_psnr, psnr(to_uint8(item[f"observation.images.{c}"]), frames[c][i]))
         if len(rows) < 4:
             cells = []
             for f in (0, 0.3, 0.55, 0.7, 0.95):

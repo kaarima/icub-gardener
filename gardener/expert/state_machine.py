@@ -280,8 +280,8 @@ def run_episode(urdf: str, config_path: str, poses_path: str, instruction: str, 
     water = WaterSim((T_can[:3, :3] @ local.T).T + T_can[:3, 3], pot_list, [table_box], WaterParams(spacing=spacing), ground=0.0)
     boxes = can_water_boxes(INNER_HALF, INNER_HALF, INNER_HEIGHT, spout_drop=SPOUT_DROP)
     if recorder is not None:
-        recorder.add_robot(robot, HAND_PARTS)
-        recorder.add_scenery(table_mesh, pot_meshes, list(can_meshes.values()), water.n, scene.table_z)
+        recorder.add_robot(robot, HAND_PARTS, BASE_POSITION)
+        recorder.add_scenery(table_mesh, pot_meshes, list(can_meshes.values()), water.n, scene.table_z, pot_list)
 
     recent_targets = []
     grid = np.linspace(-can.body / 2, can.body / 2, 15)
