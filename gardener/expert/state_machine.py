@@ -422,8 +422,13 @@ def run_episode(urdf: str, config_path: str, poses_path: str, instruction: str, 
     say(f"transport plan: heading {math.degrees(heading):.0f} deg, tilt available {furthest_tilt} deg, error {max(e1, e2, e3) * 1000:.1f} mm")
     follow(path1, 1.8)
     follow(path2, 3.2)
+    hold(0.3)
+    # Up here the arm is stretched and holds the can's weight, so it droops far more than it did empty.
+    # Measured before going down: otherwise the can lands on the rim.
+    high_q = measured_q()
+    sag.update({n: robot.targets[robot.index[n]] - high_q[n] for n in PLAN_JOINTS})
     follow(path_down, 0.6)
-    hold(0.5)
+    hold(0.2)
     # The can may have turned a little in the hand on the way: measure the grip and move the spout onto the target.
     for _ in range(2):
         arrived = can_frame()
