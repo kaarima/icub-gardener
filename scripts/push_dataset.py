@@ -20,7 +20,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--root", default=os.path.join(ROOT, "data", "lerobot", "gardener_v1"))
-    ap.add_argument("--repo-id", default="kaarima/icub_gardener_v1")
+    ap.add_argument("--repo-id", default="Kimaa6/icub_gardener_v1")
     ap.add_argument("--yes", action="store_true", help="do not ask before uploading")
     args = ap.parse_args()
     ds = LeRobotDataset(args.repo_id, root=args.root)

@@ -42,7 +42,7 @@ On Kaggle, add your Hub token as a secret named `HF_TOKEN` and download it befor
 ```bash
 !pip install -q lerobot==0.4.4
 import os; from kaggle_secrets import UserSecretsClient; os.environ["HF_TOKEN"] = UserSecretsClient().get_secret("HF_TOKEN")
-!hf download kaarima/icub_gardener_v1 --repo-type dataset --local-dir /kaggle/working/gardener_v1
+!hf download Kimaa6/icub_gardener_v1 --repo-type dataset --local-dir /kaggle/working/gardener_v1
 ```
 
 and use `DATASET=/kaggle/working/gardener_v1` below. Or zip `data/lerobot/gardener_v1` and upload it as a
