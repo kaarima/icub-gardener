@@ -30,16 +30,30 @@ def main():
     ap.add_argument("--miss-pot-mm", type=float, default=0.0, help="aim the pour this far off the pot, towards iCub: a deliberate spill")
     ap.add_argument("--record", default=None, help="if the episode succeeds, save it to this .npz file")
     ap.add_argument("--fps", type=int, default=25, help="frames saved per second with --record")
+    ap.add_argument("--policy", default=None, help="run this trained policy (a pretrained_model folder) instead of the expert")
+    ap.add_argument("--n-action-steps", type=int, default=None, help="with --policy: actions run per predicted chunk")
+    ap.add_argument("--ensemble", type=float, default=None, help="with --policy: temporal ensembling coefficient")
+    ap.add_argument("--replay", default=None, help="play this recorded episode's actions back, open loop, instead of the expert")
     ap.add_argument("--dump-contacts", default=None, help="write the arm's state at each contact to this JSON file")
     args = ap.parse_args()
 
-    recorder = None
-    if args.record:
+    recorder, controller = None, None
+    if args.policy or args.replay:
+        from gardener.policy.client import PolicyController, ReplayController
+        controller = (ReplayController(args.replay) if args.replay else
+                      PolicyController(args.policy, n_action_steps=args.n_action_steps, ensemble=args.ensemble))
+    if args.record or controller is not None:
         from gardener.data.record import EpisodeRecorder
         recorder = EpisodeRecorder(fps=args.fps)
     r = run_episode(os.path.expanduser(args.urdf), args.config, os.path.join(ROOT, "configs", "poses.yaml"),
-                    args.instruction, args.seed, verbose=not args.quiet, can_yaw_deg=args.can_yaw, recorder=recorder, miss_pot_mm=args.miss_pot_mm)
-    if recorder is not None and r.success:
+                    args.instruction, args.seed, verbose=not args.quiet, can_yaw_deg=args.can_yaw, recorder=recorder, miss_pot_mm=args.miss_pot_mm,
+                    controller=controller)
+    if controller is not None:
+        controller.close()
+    if args.replay:
+        worst, median, n = controller.deviation_deg()
+        print(f"replay: {n} frames compared; joint difference from the recording: largest {worst:.2f} deg, median per frame {median:.3f} deg")
+    if args.record and r.success:
         # Saved under a temporary name and then renamed, so a crash cannot leave a half-written episode.
         tmp = args.record + ".tmp.npz"
         recorder.save(tmp, args.instruction, args.seed, dict(poured=r.poured_fraction, water_in_target=r.water_in_target,

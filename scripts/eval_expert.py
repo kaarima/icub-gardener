@@ -23,10 +23,13 @@ INSTRUCTIONS = ["Water the left plant.", "Water the right plant.",
                 "Give the left plant a lot of water.", "Give the right plant a lot of water."]
 
 
+EXTRA = []   # options passed on to run_expert.py, such as --policy
+
+
 def run(job):
     seed, text = job
-    p = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "run_expert.py"), "--seed", str(seed), "--instruction", text],
-                       capture_output=True, text=True, timeout=900)
+    p = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "run_expert.py"), "--seed", str(seed), "--instruction", text] + EXTRA,
+                       capture_output=True, text=True, timeout=1800)
     o = p.stdout + p.stderr
     result = re.search(r"RESULT: (SUCCESS|FAILED: [^,]*), reached (.*)", o)
     if not result:
@@ -63,7 +66,17 @@ def main():
     ap.add_argument("--episodes", type=int, default=50)
     ap.add_argument("--first-seed", type=int, default=0)
     ap.add_argument("--workers", type=int, default=4)
+    ap.add_argument("--policy", default=None, help="evaluate this trained policy (a pretrained_model folder) instead of the expert")
+    ap.add_argument("--n-action-steps", type=int, default=None)
+    ap.add_argument("--ensemble", type=float, default=None)
     args = ap.parse_args()
+    if args.policy:
+        EXTRA.extend(["--policy", os.path.abspath(args.policy)])
+        if args.n_action_steps is not None:
+            EXTRA.extend(["--n-action-steps", str(args.n_action_steps)])
+        if args.ensemble is not None:
+            EXTRA.extend(["--ensemble", str(args.ensemble)])
+        print(f"evaluating the policy {args.policy}, seeds {args.first_seed}-{args.first_seed + args.episodes - 1}")
     jobs = [(args.first_seed + i, INSTRUCTIONS[i % len(INSTRUCTIONS)]) for i in range(args.episodes)]
     with cf.ThreadPoolExecutor(args.workers) as ex:
         res = list(ex.map(run, jobs))
@@ -109,6 +122,12 @@ def main():
             v = sorted(r["clear"][phase] for r in done if phase in r["clear"])
             if v:
                 print(f"rim clearance in {phase}, mm: lowest {v[0]:.1f}, median {v[len(v) // 2]:.1f}, under 5: {sum(x < 5 for x in v)}/{len(v)}")
+    print("\nby instruction:")
+    for text in INSTRUCTIONS:
+        mine = [r for r in done if r["text"] == text]
+        if mine:
+            print(f"  {text:<42} success {sum(r['ok'] for r in mine)}/{len(mine)}, amount in band {sum(r['amount'] for r in mine)}/{len(mine)}, "
+                  f"wrong pot {sum(r['wrong'] for r in mine)}/{len(mine)}")
     failures = {}
     for r in res:
         if not r["ok"]:
