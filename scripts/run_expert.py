@@ -29,13 +29,14 @@ def main():
     ap.add_argument("--quiet", action="store_true")
     ap.add_argument("--miss-pot-mm", type=float, default=0.0, help="aim the pour this far off the pot, towards iCub: a deliberate spill")
     ap.add_argument("--record", default=None, help="if the episode succeeds, save it to this .npz file")
+    ap.add_argument("--fps", type=int, default=25, help="frames saved per second with --record")
     ap.add_argument("--dump-contacts", default=None, help="write the arm's state at each contact to this JSON file")
     args = ap.parse_args()
 
     recorder = None
     if args.record:
         from gardener.data.record import EpisodeRecorder
-        recorder = EpisodeRecorder()
+        recorder = EpisodeRecorder(fps=args.fps)
     r = run_episode(os.path.expanduser(args.urdf), args.config, os.path.join(ROOT, "configs", "poses.yaml"),
                     args.instruction, args.seed, verbose=not args.quiet, can_yaw_deg=args.can_yaw, recorder=recorder, miss_pot_mm=args.miss_pot_mm)
     if recorder is not None and r.success:
