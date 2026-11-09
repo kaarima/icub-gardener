@@ -50,6 +50,7 @@ def main():
     for ep, path in enumerate(files):
         e = np.load(path)
         n, text = len(e["state"]), str(e["instruction"])
+        cameras = [c for c in ("eye", "wrist", "scene") if c in e]
         tasks[text] = tasks.get(text, 0) + 1
         start = index
         # Numbers, every frame, through the parquet tables only (no video decoding, so this is quick).
@@ -64,13 +65,13 @@ def main():
             item = ds[start + int(i)]
             if item["task"] != text:
                 problems.append(f"episode {ep} frame {i}: task {item['task']!r}, expected {text!r}")
-            worst_psnr = min(worst_psnr, psnr(to_uint8(item["observation.images.eye"]), e["eye"][i]),
-                             psnr(to_uint8(item["observation.images.scene"]), e["scene"][i]))
+            for c in cameras:
+                worst_psnr = min(worst_psnr, psnr(to_uint8(item[f"observation.images.{c}"]), e[c][i]))
         if len(rows) < 4:
             cells = []
             for f in (0, 0.3, 0.55, 0.7, 0.95):
                 item = ds[start + int(f * (n - 1))]
-                cells.append(np.vstack([to_uint8(item["observation.images.eye"]), to_uint8(item["observation.images.scene"])]))
+                cells.append(np.vstack([to_uint8(item[f"observation.images.{c}"]) for c in cameras]))
             rows.append(np.hstack(cells))
         moves = float(np.abs(np.diff(e["action"][:, :10], axis=0)).max())
         print(f"episode {ep:2d} {os.path.basename(path)}: {n} frames ({n / ds.fps:.1f} s), largest joint target jump {np.degrees(moves):.2f} deg/frame, {text!r}")

@@ -30,9 +30,9 @@ def main():
     first = np.load(files[0])
     names = [str(n) for n in first["joints"]]
     h, w, _ = first["eye"].shape[1:]
+    cameras = [c for c in ("eye", "wrist", "scene") if c in first]
     features = {
-        "observation.images.eye": {"dtype": "video", "shape": (h, w, 3), "names": ["height", "width", "channels"]},
-        "observation.images.scene": {"dtype": "video", "shape": (h, w, 3), "names": ["height", "width", "channels"]},
+        **{f"observation.images.{c}": {"dtype": "video", "shape": (h, w, 3), "names": ["height", "width", "channels"]} for c in cameras},
         "observation.state": {"dtype": "float32", "shape": (len(names),), "names": names},
         "action": {"dtype": "float32", "shape": (len(names),), "names": names},
     }
@@ -45,7 +45,7 @@ def main():
         e = np.load(path)
         task = str(e["instruction"])
         for i in range(len(e["state"])):
-            ds.add_frame({"observation.images.eye": e["eye"][i], "observation.images.scene": e["scene"][i],
+            ds.add_frame({**{f"observation.images.{c}": e[c][i] for c in cameras},
                           "observation.state": e["state"][i], "action": e["action"][i], "task": task})
         ds.save_episode()
         print(f"{os.path.basename(path)}: {len(e['state'])} frames, {task!r}", flush=True)

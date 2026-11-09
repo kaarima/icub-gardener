@@ -6,7 +6,7 @@ the `gardener-train` env, because LeRobot needs other versions of torch and nump
 One frame holds:
   state:  measured joint angles (3 torso, 7 arm, radians), then the commanded finger and thumb closure (0 to 1)
   action: the joint targets and closures commanded for this frame, in the same order
-  images: the eye camera and a fixed scene camera, 224 x 224 RGB
+  images: the eye camera, a wrist camera and a fixed scene camera, 224 x 224 RGB
 
 Limitation: the robot is drawn from its collision shapes, because the build with separate finger drives has
 no visual meshes. A policy trained on these images sees capsules and boxes, not iCub's real look.
@@ -23,6 +23,10 @@ EVERY_N_STEPS = 2
 IMAGE_SIZE = 224
 SCENE_CAMERA = ((-0.95, 0.08, 1.15), (-0.32, 0.08, 0.62))   # position and look-at point
 EYE_LOOK_AT = (-0.34, 0.08, 0.60)
+# The wrist camera rides on the hand, above the fingers, like a small mast. Of six placements compared in one
+# episode, it alone keeps the fingers, handle, can, target pot and water stream in view through every phase.
+# It has no collider. The forearm blocks the eye camera during a pour, but it cannot come between these.
+WRIST_CAMERA = ((-0.12, -0.02, 0.12), (-0.06, -0.20, -0.05))   # position and look-at point, hand frame (m)
 WATER_DRAW_RADIUS = 0.004
 COLOURS = dict(robot=0x9aa4b2, hand=0xd8c0a0, can=0xc0392b, table=0x8a6a48, pot=0x4f7942, floor=0x2b2f36, water=0x2f7fe0)
 
@@ -42,10 +46,11 @@ class EpisodeRecorder:
         self.scene_cam = self._camera(*SCENE_CAMERA)
         self.eye_cam = tp.PerspectiveCamera(60, 1.0, 0.02, 5.0)
         self.eye_cam.up.set(0, 0, 1)
+        self.wrist_cam = tp.PerspectiveCamera(70, 1.0, 0.01, 5.0)
         self.water = None
         self.matrix = tp.Matrix4()
         self.steps = 0
-        self.state, self.action, self.eye, self.top = [], [], [], []
+        self.state, self.action, self.eye, self.top, self.wrist = [], [], [], [], []
 
     @staticmethod
     def _camera(position, look_at):
@@ -77,7 +82,7 @@ class EpisodeRecorder:
         self.water.frustum_culled = False
         self.scene.add(self.water)
 
-    def frame(self, eye_position, q: dict, fingers: float, thumb: float, targets: dict, particles: np.ndarray) -> None:
+    def frame(self, eye_position, T_hand: np.ndarray, q: dict, fingers: float, thumb: float, targets: dict, particles: np.ndarray) -> None:
         """Called once per simulation step; keeps every EVERY_N_STEPS-th."""
         self.steps += 1
         if self.steps % EVERY_N_STEPS:
@@ -92,11 +97,18 @@ class EpisodeRecorder:
         self.eye.append(self.renderer.read_pixels()[..., :3].copy())
         self.renderer.render(self.scene, self.scene_cam)
         self.top.append(self.renderer.read_pixels()[..., :3].copy())
+        position = T_hand[:3, :3] @ np.array(WRIST_CAMERA[0]) + T_hand[:3, 3]
+        target = T_hand[:3, :3] @ np.array(WRIST_CAMERA[1]) + T_hand[:3, 3]
+        self.wrist_cam.up.set(*map(float, T_hand[:3, 2]))     # the hand's z axis, so the view turns with the hand
+        self.wrist_cam.position.set(*map(float, position))
+        self.wrist_cam.look_at(*map(float, target))
+        self.renderer.render(self.scene, self.wrist_cam)
+        self.wrist.append(self.renderer.read_pixels()[..., :3].copy())
         self.state.append([q[n] for n in PLAN_JOINTS] + [fingers, thumb])
         self.action.append([targets[n] for n in PLAN_JOINTS] + [fingers, thumb])
 
     def save(self, path: str, instruction: str, seed: int, metadata: dict) -> None:
-        np.savez(path, eye=np.stack(self.eye), scene=np.stack(self.top),
+        np.savez(path, eye=np.stack(self.eye), scene=np.stack(self.top), wrist=np.stack(self.wrist),
                  state=np.asarray(self.state, dtype=np.float32), action=np.asarray(self.action, dtype=np.float32),
                  instruction=instruction, seed=seed, fps=FPS, joints=np.array(PLAN_JOINTS + ["fingers", "thumb"]),
                  **{f"meta_{k}": v for k, v in metadata.items()})

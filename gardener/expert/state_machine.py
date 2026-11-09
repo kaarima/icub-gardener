@@ -279,7 +279,7 @@ def run_episode(urdf: str, config_path: str, poses_path: str, instruction: str, 
         water.step(DT)
         if recorder is not None and state["phase"] != "setup":
             q_now = dict(zip(PLAN_JOINTS, robot.get(PLAN_JOINTS)))
-            recorder.frame(kin.fk("r_eye", q_now)[:3, 3], q_now, state["fingers"], state["thumb"],
+            recorder.frame(kin.fk("r_eye", q_now)[:3, 3], kin.hand(q_now), q_now, state["fingers"], state["thumb"],
                            {n: float(robot.targets[robot.index[n]]) for n in PLAN_JOINTS}, water.positions())
 
     def counts():
