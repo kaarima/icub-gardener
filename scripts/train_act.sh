@@ -35,7 +35,7 @@ echo "ACT: $STEPS steps, batch $BATCH, on $DEVICE, $(python -c "print(len($TRAIN
   --batch_size="$BATCH" \
   --steps="$STEPS" \
   --save_freq="$SAVE" \
-  --log_freq=200 \
+  --log_freq="${LOG:-200}" \
   --num_workers="$WORKERS" \
   --eval_freq=0 \
   --wandb.enable=false \
