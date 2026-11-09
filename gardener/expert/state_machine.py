@@ -98,9 +98,13 @@ class Result:
 
 
 def run_episode(urdf: str, config_path: str, poses_path: str, instruction: str, seed: int, verbose: bool = True,
-                can_yaw_deg: float | None = None, recorder=None, miss_pot_mm: float = 0.0) -> Result:
+                can_yaw_deg: float | None = None, recorder=None, miss_pot_mm: float = 0.0, controller=None) -> Result:
     """recorder: an optional gardener.data.record.EpisodeRecorder. It only reads the simulation.
-    miss_pot_mm: aim the pour this far from the pot's centre, towards iCub, to test how spills are counted."""
+    miss_pot_mm: aim the pour this far from the pot's centre, towards iCub, to test how spills are counted.
+    controller: replaces the expert after the setup, in the same scene, scored the same way. Called once per
+    recorded frame with {"eye", "wrist", "scene": images, "state": 12 numbers, "instruction": text}, it returns
+    12 numbers in the recorded action's order (10 joint targets, finger and thumb closure). Needs a recorder,
+    which makes the images; then nothing is kept for saving."""
     with open(config_path) as f:
         cfg = yaml.safe_load(f)
     with open(poses_path) as f:
@@ -352,9 +356,36 @@ def run_episode(urdf: str, config_path: str, poses_path: str, instruction: str, 
             out.append(dict(q))
         return out, worst
 
-    # ---- reach and grasp ----------------------------------------------------------------------
+    # ---- score: the book's definition, fixed before evaluating any policy ----------------------------
+    def score(band, n_total):
+        end = can_frame()
+        c = counts()
+        res.final_tilt_deg = body_tilt_deg()
+        res.placed_error_mm = float(np.linalg.norm((end - rest)[:2, 3])) * 1000
+        left = n_total - c["can"]
+        res.poured_fraction = left / n_total
+        res.water_in_target = c[f"pot{target_index}"] / max(left, 1)
+        res.spill = (c.get("table", 0) + c.get("floor", 0)) / max(left, 1)
+        res.wrong_pot = c[f"pot{1 - target_index}"] > c[f"pot{target_index}"]
+        res.amount_ok = band[0] <= res.poured_fraction <= band[1]
+        s = cfg["success"]
+        on_table = abs(end[2, 3] - rest[2, 3]) < 0.01 and res.final_tilt_deg <= s["max_can_tilt"]
+        res.success = (left > 0 and res.water_in_target >= s["min_water_in_target"] and on_table and state["sim"] <= s["timeout"]
+                       and not contacts)
+        if not res.success:
+            res.failure = ("nothing poured" if left == 0 else "wrong pot" if res.wrong_pot else "water missed the pot"
+                           if res.water_in_target < s["min_water_in_target"] else "can not upright on the table" if not on_table
+                           else "timeout" if state["sim"] > s["timeout"] else "collision")
+        return finish(res, state, wall0, c, contacts)
+
+    band = {"little": cfg["expert"]["little"], "lot": cfg["expert"]["a_lot"], "normal": [0.40, 0.60]}[amount]
     hold(0.5)
     rest = can_frame()
+    if controller is not None:
+        return run_controller(controller, recorder, instruction, robot, state, res, cfg, rest, can_frame, body_tilt_deg,
+                              step, lambda: score(band, water.n))
+
+    # ---- reach and grasp ----------------------------------------------------------------------
     res.stage_reached = state["phase"] = "reach"
     follow(plan.path_reach, 2.0)
     res.stage_reached = state["phase"] = "approach"
@@ -457,7 +488,6 @@ def run_episode(urdf: str, config_path: str, poses_path: str, instruction: str, 
 
     # ---- pour: tilt until the requested amount has left, using the particle count -----------------
     res.stage_reached = state["phase"] = "pour"
-    band = {"little": cfg["expert"]["little"], "lot": cfg["expert"]["a_lot"], "normal": [0.40, 0.60]}[amount]
     goal_fraction = sum(band) / 2
     n_total = water.n
     can_now = pre_pour                # tilt about the target, with the grip as measured
@@ -592,26 +622,54 @@ def run_episode(urdf: str, config_path: str, poses_path: str, instruction: str, 
     hold(1.0)
     res.stage_reached = "end"
 
-    # ---- score: the book's definition, fixed before evaluating any policy ----------------------------
-    end = can_frame()
-    c = counts()
-    res.final_tilt_deg = body_tilt_deg()
-    res.placed_error_mm = float(np.linalg.norm((end - rest)[:2, 3])) * 1000
-    left = n_total - c["can"]
-    res.poured_fraction = left / n_total
-    res.water_in_target = c[f"pot{target_index}"] / max(left, 1)
-    res.spill = (c.get("table", 0) + c.get("floor", 0)) / max(left, 1)
-    res.wrong_pot = c[f"pot{1 - target_index}"] > c[f"pot{target_index}"]
-    res.amount_ok = band[0] <= res.poured_fraction <= band[1]
-    s = cfg["success"]
-    on_table = abs(end[2, 3] - rest[2, 3]) < 0.01 and res.final_tilt_deg <= s["max_can_tilt"]
-    res.success = (left > 0 and res.water_in_target >= s["min_water_in_target"] and on_table and state["sim"] <= s["timeout"]
-                   and not contacts)
-    if not res.success:
-        res.failure = ("nothing poured" if left == 0 else "wrong pot" if res.wrong_pot else "water missed the pot"
-                       if res.water_in_target < s["min_water_in_target"] else "can not upright on the table" if not on_table
-                       else "timeout" if state["sim"] > s["timeout"] else "collision")
-    return finish(res, state, wall0, c, contacts)
+    return score(band, n_total)
+
+
+def run_controller(controller, recorder, instruction, robot, state, res, cfg, rest, can_frame, body_tilt_deg, step, score):
+    """Hand the robot to a controller (a learned policy, or saved actions) until it has put the can down and
+    let go, or the time limit passes. Same scene, same contact checks and same score as the expert.
+
+    Counted as done once the can has been lifted and is back on the table, upright, with the hand open
+    (finger and thumb commands under 0.05) for 1 s. The joint target limit of 1 deg per step applies here too.
+    """
+    if recorder is None:
+        raise ValueError("a controller needs a recorder for its camera images")
+    res.stage_reached = state["phase"] = "controlled"
+    timeout = cfg["success"]["timeout"]
+    lifted, open_for, wanted = False, 0.0, None
+    while state["sim"] <= timeout:
+        if wanted is not None:
+            robot.set_targets(wanted)     # every step: the 1 deg per step limit may need two steps to get there
+        step()
+        if recorder.state:
+            obs = dict(eye=recorder.eye[-1], wrist=recorder.wrist[-1], scene=recorder.top[-1],
+                       state=np.asarray(recorder.state[-1], dtype=np.float32), instruction=instruction)
+            for kept in (recorder.eye, recorder.wrist, recorder.top, recorder.state, recorder.action):
+                kept.clear()
+            a = np.asarray(controller(obs), dtype=np.float64)
+            wanted = dict(zip(PLAN_JOINTS, a[:10].tolist()))
+            state["fingers"], state["thumb"] = float(np.clip(a[10], 0.0, 1.0)), float(np.clip(a[11], 0.0, 1.0))
+        now = can_frame()
+        rise = float(now[2, 3] - rest[2, 3])
+        if not state["can_in_air"] and rise > 0.015:
+            state["can_in_air"] = True
+            if not lifted:
+                res.drag_mm = float(np.linalg.norm((now - rest)[:2, 3])) * 1000
+            lifted = True
+        elif state["can_in_air"] and rise < 0.008:
+            state["can_in_air"] = False
+        res.lift_mm = max(res.lift_mm, rise * 1000)
+        upright = body_tilt_deg() <= cfg["success"]["max_can_tilt"]
+        if lifted and not state["can_in_air"] and upright and state["fingers"] < 0.05 and state["thumb"] < 0.05:
+            open_for += DT
+            if open_for >= 1.0:
+                res.stage_reached = "end"
+                break
+        else:
+            open_for = 0.0
+    else:
+        res.stage_reached = "time limit"
+    return score()
 
 
 def arm_clear_at(kin, q: dict, pots_xy: list, pot_outer: float, rim_z: float, margin: float = 0.010,

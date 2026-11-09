@@ -4,6 +4,8 @@
 Run in the gardener-train env, with your ROS PYTHONPATH cleared so its old packages do not get imported:
   env -u PYTHONPATH ~/miniconda3/envs/gardener-train/bin/python scripts/to_lerobot.py
 
+Each frame also holds the instruction as five numbers (observation.environment_state), for ACT, which cannot
+read the text; see gardener/data/instructions.py. The text itself is the frame's task, for SmolVLA.
 Frames go straight into the video encoder, with no PNG files in between (--png uses the old way, to compare).
 Nothing is uploaded. The dataset is written to data/lerobot/gardener_v1, replacing any older copy there.
 """
@@ -12,10 +14,14 @@ import glob
 import os
 import shutil
 
+import sys
+
 import numpy as np
 from lerobot.datasets.lerobot_dataset import LeRobotDataset
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, ROOT)
+from gardener.data.instructions import CODE_NAMES, code  # noqa: E402
 
 
 def main():
@@ -36,6 +42,7 @@ def main():
     features = {
         **{f"observation.images.{c}": {"dtype": "video", "shape": (h, w, 3), "names": ["height", "width", "channels"]} for c in cameras},
         "observation.state": {"dtype": "float32", "shape": (len(names),), "names": names},
+        "observation.environment_state": {"dtype": "float32", "shape": (len(CODE_NAMES),), "names": CODE_NAMES},
         "action": {"dtype": "float32", "shape": (len(names),), "names": names},
     }
     if os.path.exists(args.out):
@@ -49,9 +56,11 @@ def main():
         # Read each camera once: e[c] unpacks the whole array from the file every time it is used.
         frames = {c: e[c] for c in cameras}
         state, action = e["state"], e["action"]
+        instruction_code = np.asarray(code(task), dtype=np.float32)
         for i in range(len(state)):
             ds.add_frame({**{f"observation.images.{c}": frames[c][i] for c in cameras},
-                          "observation.state": state[i], "action": action[i], "task": task})
+                          "observation.state": state[i], "observation.environment_state": instruction_code,
+                          "action": action[i], "task": task})
         ds.save_episode()
         print(f"{os.path.basename(path)}: {len(state)} frames, {task!r}", flush=True)
     ds.finalize()
