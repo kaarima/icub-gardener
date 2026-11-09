@@ -46,6 +46,7 @@ OPEN_HAND_POINTS = np.array([[-0.129, 0.005, 0.064], [-0.138, 0.006, 0.043], [-0
 OPEN_HAND_RADIUS = 0.010
 FLOW_LEAD_S = 0.5           # s of the current flow still to come after the can starts tilting back
 FLOW_LEAD_LOT_S = 0.2       # a big pour flows fast, so the longer lead would stop it well short of its target
+MAX_JOINT_STEP = math.radians(1.0)   # per control step, while tilting back: at most 2 deg per recorded frame
 TILT_BACK_RATE = 45.0       # deg/s; quick, so the flow stops soon
 MIN_POUR_MARGIN_DEG = 5.0   # wrist_yaw must keep this much room all through the pour
 MIN_SCENERY_FORCE = 10.0    # N. Sensors cannot tell a light pot contact from the fingers touching the can body
@@ -458,6 +459,7 @@ def run_episode(urdf: str, config_path: str, poses_path: str, instruction: str, 
     say(f"pour start: spout {np.round((spout[:3] - [pot.x, pot.y, rim]) * 1000)} mm from the pot's rim centre, "
         f"can up axis {np.round(can_now[:3, 2], 2)}, spout direction {np.round(can_now[:3, 0], 2)}, planned heading {math.degrees(heading):.0f} deg")
     q_tilt = dict(q)
+    tilt_path = [(0.0, dict(q))]      # tilting back replays this, so the arm ends where it started
     hold_time = 0.0
     history = []
     while tilt < max_tilt or hold_time < 3.0:
@@ -480,6 +482,10 @@ def run_episode(urdf: str, config_path: str, poses_path: str, instruction: str, 
             hold_time += DT
         T = pour_pose(can_now, tilt)
         q_tilt, _, _ = kin.ik(q_tilt, T @ T_hand_in_can, PLAN_JOINTS, CENTER_WEIGHTS, iterations=8, rest=REST)
+        if tilt > tilt_path[-1][0]:
+            tilt_path.append((tilt, dict(q_tilt)))
+        else:
+            tilt_path[-1] = (tilt, dict(q_tilt))   # holding at full tilt, IK still adjusts the arm
         robot.set_targets({n: q_tilt[n] + sag[n] for n in PLAN_JOINTS})
         step()
         if can_frame()[2, 3] < rim - 0.05:
@@ -490,13 +496,34 @@ def run_episode(urdf: str, config_path: str, poses_path: str, instruction: str, 
     say(f"pour: stopped at tilt {math.degrees(tilt):.0f} deg with {poured * 100:.0f}% out; at the stop the spout is "
         f"{np.round((spout[:3] - [pot.x, pot.y, rim]) * 1000)} mm from the pot's rim centre, can up axis {np.round(can_frame()[:3, 2], 2)}")
     res.stage_reached = state["phase"] = "tilt back"
-    steps = int(max(0.5, tilt / math.radians(TILT_BACK_RATE)) / DT)
-    for i in range(steps):
-        T = pour_pose(can_now, tilt * (1 - (i + 1) / steps))
-        q_tilt, _, _ = kin.ik(q_tilt, T @ T_hand_in_can, PLAN_JOINTS, CENTER_WEIGHTS, iterations=8, rest=REST)
+    tilts = [t for t, _ in tilt_path]
+    joint_paths = {n: [p[n] for _, p in tilt_path] for n in PLAN_JOINTS}
+
+    def arm_at(t):
+        return {n: float(np.interp(t, tilts, joint_paths[n])) for n in PLAN_JOINTS}
+
+    now_tilt = tilt
+    # Quick, so the flow stops soon, but no joint may exceed its limit where the arm moved a lot.
+    tilt_back_step = tilt / max(0.5, tilt / math.radians(TILT_BACK_RATE)) * DT
+    while now_tilt > 0.0:
+        next_tilt = max(0.0, now_tilt - tilt_back_step)
+        fastest = max(abs(v - q_tilt[n]) for n, v in arm_at(next_tilt).items())
+        if fastest > MAX_JOINT_STEP:
+            next_tilt = now_tilt - (now_tilt - next_tilt) * MAX_JOINT_STEP / fastest
+        now_tilt = next_tilt
+        q_tilt = arm_at(now_tilt)
         robot.set_targets({n: q_tilt[n] + sag[n] for n in PLAN_JOINTS})
         step()
-    hold(1.0)
+    # Bring the arm to where the return path starts, during this pause, with IK keeping the can still.
+    settle_steps = int(1.0 / DT)
+    settle_from = dict(q_tilt)
+    upright_T = pour_pose(can_now, 0.0) @ T_hand_in_can
+    for i in range(settle_steps):
+        s_ = (i + 1) / settle_steps
+        wanted = {n: settle_from[n] + s_ * (path_down[-1][n] - settle_from[n]) for n in PLAN_JOINTS}
+        q_tilt, _, _ = kin.ik(wanted, upright_T, PLAN_JOINTS, CENTER_WEIGHTS, iterations=8, rest=wanted)
+        robot.set_targets({n: q_tilt[n] + sag[n] for n in PLAN_JOINTS})
+        step()
 
     # ---- back to the table -----------------------------------------------------------------------
     res.stage_reached = state["phase"] = "return"
