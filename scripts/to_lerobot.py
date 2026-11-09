@@ -49,7 +49,11 @@ def main():
         shutil.rmtree(args.out)
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
     ds = LeRobotDataset.create(repo_id=args.repo_id, fps=int(first["fps"]), features=features, root=args.out,
-                               robot_type="icub_upper_body", use_videos=True, streaming_encoding=not args.png)
+                               robot_type="icub_upper_body", use_videos=True, streaming_encoding=not args.png,
+                               # LeRobot's streaming encoder drops a frame when its queue stays full for 0.1 s (it was
+                               # built for live robots). We feed faster than real time, and a 30-frame queue lost
+                               # 2 frames in 600 videos, so the queue holds a whole episode (at most about 1,100 frames).
+                               encoder_queue_maxsize=1200)
     for path in files:
         e = np.load(path)
         task = str(e["instruction"])
@@ -61,6 +65,9 @@ def main():
             ds.add_frame({**{f"observation.images.{c}": frames[c][i] for c in cameras},
                           "observation.state": state[i], "observation.environment_state": instruction_code,
                           "action": action[i], "task": task})
+        dropped = dict(getattr(ds._streaming_encoder, "_dropped_frames", {}) or {}) if ds._streaming_encoder else {}
+        if any(dropped.values()):
+            raise SystemExit(f"{os.path.basename(path)}: the video encoder dropped frames {dropped}; images would no longer match actions")
         ds.save_episode()
         print(f"{os.path.basename(path)}: {len(state)} frames, {task!r}", flush=True)
     ds.finalize()

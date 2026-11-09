@@ -77,6 +77,12 @@ def main():
         moves = float(np.abs(np.diff(e["action"][:, :10], axis=0)).max())
         print(f"episode {ep:2d} {os.path.basename(path)}: {n} frames ({n / ds.fps:.1f} s), largest joint target jump {np.degrees(moves):.2f} deg/frame, {text!r}")
         index += n
+    # Every frame must be in the video: one missing frame shifts the rest of that episode's images by one.
+    for key in ds.meta.video_keys:
+        span = (np.asarray(ds.meta.episodes[f"videos/{key}/to_timestamp"]) - np.asarray(ds.meta.episodes[f"videos/{key}/from_timestamp"])) * ds.fps
+        wrong = [ep for ep, (s, n) in enumerate(zip(span, ds.meta.episodes["length"])) if round(float(s)) != int(n)]
+        if wrong:
+            problems.append(f"{key}: video span differs from the episode length in episodes {wrong}")
     if index != ds.num_frames:
         problems.append(f"raw files hold {index} frames, dataset {ds.num_frames}")
     if worst_state > 1e-5:
