@@ -28,7 +28,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--raw", default=os.path.join(ROOT, "data", "raw"))
     ap.add_argument("--out", default=os.path.join(ROOT, "data", "lerobot", "gardener_v1"))
-    ap.add_argument("--repo-id", default="kaarima/icub_gardener_v1", help="dataset name; not uploaded by this script")
+    ap.add_argument("--repo-id", default="Kimaa6/icub_gardener_v1", help="dataset name; not uploaded by this script")
     ap.add_argument("--png", action="store_true", help="write each frame as a PNG first, as LeRobot does by default")
     args = ap.parse_args()
 

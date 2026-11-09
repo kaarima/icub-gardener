@@ -21,7 +21,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--root", default=os.path.join(ROOT, "data", "lerobot", "gardener_v1"))
-    ap.add_argument("--repo-id", default="kaarima/icub_gardener_v1")
+    ap.add_argument("--repo-id", default="Kimaa6/icub_gardener_v1")
     ap.add_argument("--val", type=int, default=20)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--out", default=os.path.join(ROOT, "configs", "act_split.json"))

@@ -33,7 +33,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--raw", default=os.path.join(ROOT, "data", "raw"))
     ap.add_argument("--root", default=os.path.join(ROOT, "data", "lerobot", "gardener_v1"))
-    ap.add_argument("--repo-id", default="kaarima/icub_gardener_v1")
+    ap.add_argument("--repo-id", default="Kimaa6/icub_gardener_v1")
     ap.add_argument("--sheet", default=None, help="save a contact sheet PNG here")
     ap.add_argument("--images-per-episode", type=int, default=6, help="decoded frames compared per episode")
     args = ap.parse_args()

@@ -23,7 +23,7 @@ TRAIN_EPISODES="$(python -c "import json;print(json.load(open('$SPLIT'))['train'
 LEROBOT_TRAIN="${LEROBOT_TRAIN:-lerobot-train}"
 echo "ACT: $STEPS steps, batch $BATCH, on $DEVICE, $(python -c "print(len($TRAIN_EPISODES))") training episodes, output $OUT"
 "$LEROBOT_TRAIN" \
-  --dataset.repo_id=kaarima/icub_gardener_v1 \
+  --dataset.repo_id=Kimaa6/icub_gardener_v1 \
   --dataset.root="$DATASET" \
   --dataset.episodes="$TRAIN_EPISODES" \
   --policy.type=act \
