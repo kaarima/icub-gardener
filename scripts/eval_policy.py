@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """Evaluate a trained policy on the 50 held-out seeds, with exactly the expert's report.
 
+The report starts with the policy's label for results tables: "ACT + task ID" for ACT given the instruction
+as five numbers (observation.environment_state), as ours is.
+
 The policy replaces the expert after the scene is set up: same scenes, same contact checks, same success
 rule (gardener/expert/state_machine.py, run_controller and score). Each episode starts its own policy server
 in the gardener-train env. Two workers fit the 4 GB laptop GPU.
@@ -16,6 +19,14 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import eval_expert  # noqa: E402
 
+
+def policy_label(checkpoint: str) -> str:
+    """The name used in every results table: 'ACT + task ID' when ACT is given the instruction as numbers."""
+    import json
+    config = json.load(open(os.path.join(checkpoint, "config.json")))
+    name = {"act": "ACT", "smolvla": "SmolVLA"}.get(config.get("type"), config.get("type", "?"))
+    return name + (" + task ID" if "observation.environment_state" in config.get("input_features", {}) else "")
+
 if __name__ == "__main__":
     if len(sys.argv) < 2 or sys.argv[1].startswith("-"):
         raise SystemExit(__doc__)
@@ -25,4 +36,5 @@ if __name__ == "__main__":
     if "--workers" not in args:
         args += ["--workers", "2"]
     sys.argv = [sys.argv[0]] + args
+    print(f"POLICY: {policy_label(args[1])}")
     eval_expert.main()

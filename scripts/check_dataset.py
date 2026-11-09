@@ -84,6 +84,25 @@ def main():
     if worst_psnr < 30:
         problems.append(f"video quality low: PSNR {worst_psnr:.1f} dB")
     stats = ds.meta.stats
+    # ACT divides by these std values, with only 1e-8 added: a zero std would multiply that input by about 1e8.
+    for key in ("observation.environment_state", "observation.state", "action"):
+        if key not in stats:
+            if key != "observation.environment_state" or key in ds.features:
+                problems.append(f"no normalisation stats for {key}")
+            continue
+        names = ds.features[key]["names"]
+        mean, std = np.asarray(stats[key]["mean"]).ravel(), np.asarray(stats[key]["std"]).ravel()
+        lo, hi = np.asarray(stats[key]["min"]).ravel(), np.asarray(stats[key]["max"]).ravel()
+        print(f"{key} stats (name: mean, std, min..max):")
+        for k, n in enumerate(names):
+            print(f"  {n:<16} {mean[k]:8.3f} {std[k]:7.3f}  {lo[k]:7.3f}..{hi[k]:.3f}")
+        if np.any(std < 1e-3):
+            problems.append(f"{key}: std near zero for {[n for n, v in zip(names, std) if v < 1e-3]}")
+    if "observation.environment_state" in stats:
+        mean = np.asarray(stats["observation.environment_state"]["mean"]).ravel()
+        # One-hot: each pair or triple must add up to 1, and mean = share of episodes frames with that value.
+        if abs(mean[0] + mean[1] - 1) > 1e-3 or abs(mean[2:].sum() - 1) > 1e-3:
+            problems.append(f"instruction code means do not add up to 1: {np.round(mean, 3)}")
     print("state stats present:", "observation.state" in stats, "| action std (first 3):", np.round(np.asarray(stats["action"]["std"])[:3], 3))
     print(f"instructions: {tasks}")
     print(f"worst state/action difference from raw {worst_state:.2e}; worst decoded-image PSNR {worst_psnr:.1f} dB")
