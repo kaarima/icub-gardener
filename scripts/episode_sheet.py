@@ -54,17 +54,18 @@ def main():
 
     size = e["eye"].shape[1]
     title_height = 30
-    sheet = Image.new("RGB", (size * len(picks), title_height + LABEL_HEIGHT + 2 * size), "white")
+    cameras = [c for c in ("eye", "wrist", "scene") if c in e]
+    sheet = Image.new("RGB", (size * len(picks), title_height + LABEL_HEIGHT + len(cameras) * size), "white")
     draw = ImageDraw.Draw(sheet)
     total = len(state) / FPS
     draw.text((6, 8), f"{os.path.basename(args.episode)}: {str(e['instruction'])!r}, {total:.1f} s. "
-                      f"Top row: iCub's eye camera. Bottom row: scene camera.", fill="black")
+                      f"Rows, top to bottom: {', '.join(cameras)} camera.", fill="black")
     for k, (name, _, i) in enumerate(picks):
         x = k * size
         draw.text((x + 6, title_height + 4), f"{k + 1}. {name}", fill="black")
         draw.text((x + 6, title_height + 22), f"t = {i / FPS:.1f} s, frame {i}", fill=(90, 90, 90))
-        sheet.paste(Image.fromarray(e["eye"][i]), (x, title_height + LABEL_HEIGHT))
-        sheet.paste(Image.fromarray(e["scene"][i]), (x, title_height + LABEL_HEIGHT + size))
+        for row, c in enumerate(cameras):
+            sheet.paste(Image.fromarray(e[c][i]), (x, title_height + LABEL_HEIGHT + row * size))
     sheet.save(args.out)
     print("phases (seconds): " + ", ".join(f"{n} {a / FPS:.1f}-{b / FPS:.1f}" for n, a, b in ranges))
     print(f"saved {os.path.abspath(args.out)}")

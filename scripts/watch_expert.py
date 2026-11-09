@@ -49,7 +49,7 @@ class LiveViewer(EpisodeRecorder):
         self.stop_after = stop_after
         self.started = time.perf_counter()
 
-    def frame(self, eye_position, q, fingers, thumb, targets, particles):
+    def frame(self, eye_position, T_hand, q, fingers, thumb, targets, particles):
         self.frames += 1
         if self.frames % 2:
             return
