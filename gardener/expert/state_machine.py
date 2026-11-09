@@ -11,7 +11,7 @@ from __future__ import annotations
 import math
 import re
 import time
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field, replace, replace
 
 import numpy as np
 import threepp as tp
@@ -37,7 +37,8 @@ USABLE_HEIGHT = INNER_HEIGHT - SPOUT_DROP   # water above this would run out of 
 FLOOR = 0.010
 SPOUT = np.array([0.030, 0.0, USABLE_HEIGHT])  # the notch in the can's frame: the pivot for pouring
 CARRY_ABOVE_RIM = 0.040     # the can's floor above the rims while crossing the table, before descending to pour
-SPOUT_ABOVE_RIM = 0.075     # the upright can's floor then clears the rim by 15 mm
+AIM_BACK_LOT = 0.030        # a big pour leaves the can fast and lands beyond the spout, so aim it back from the pot's centre
+SPOUT_ABOVE_RIM = 0.080     # the upright can's underside clears the rim by 10 mm. Much higher and the falling water misses the pot
 # Where the open hand reaches, in the hand frame (m): fingertips, finger middles, palm corners and the opposed thumb.
 OPEN_HAND_POINTS = np.array([[-0.129, 0.005, 0.064], [-0.138, 0.006, 0.043], [-0.140, 0.012, 0.019], [-0.135, 0.011, 0.002],
                              [-0.100, 0.006, 0.050], [-0.100, 0.006, 0.010], [-0.068, 0.0, 0.047], [-0.068, 0.0, -0.022],
@@ -82,6 +83,12 @@ class Result:
     layouts_redrawn: int = 0
     spilled_before_pour: float = 0.0
     spout_error_mm: float = 0.0
+    largest_target_jump_deg: float = 0.0   # biggest change of any joint's target over one recorded frame (40 ms)
+    return_gap_deg: float = 0.0            # how far the arm's targets are from the start of the return path
+    return_gap_mm: float = 0.0             # the same gap, as the distance between the two hand positions
+    largest_jump_phase: str = ""
+    pour_height_error_mm: float = 0.0      # how far the can's height is from the plan when the pour starts
+    rim_clearance_mm: dict = field(default_factory=dict)  # per phase: lowest the can body came above a pot's rim, while over that rim
     contacts: list = field(default_factory=list)  # things that should never touch, see run_episode
     contact_states: dict = field(default_factory=dict)  # diagnostics: the arm's state at the strongest moment of each contact
     counts: dict = field(default_factory=dict)
@@ -89,8 +96,9 @@ class Result:
 
 
 def run_episode(urdf: str, config_path: str, poses_path: str, instruction: str, seed: int, verbose: bool = True,
-                can_yaw_deg: float | None = None, recorder=None) -> Result:
-    """recorder: an optional gardener.data.record.EpisodeRecorder. It only reads the simulation."""
+                can_yaw_deg: float | None = None, recorder=None, miss_pot_mm: float = 0.0) -> Result:
+    """recorder: an optional gardener.data.record.EpisodeRecorder. It only reads the simulation.
+    miss_pot_mm: aim the pour this far from the pot's centre, towards iCub, to test how spills are counted."""
     with open(config_path) as f:
         cfg = yaml.safe_load(f)
     with open(poses_path) as f:
@@ -273,8 +281,28 @@ def run_episode(urdf: str, config_path: str, poses_path: str, instruction: str, 
         recorder.add_robot(robot, HAND_PARTS)
         recorder.add_scenery(table_mesh, pot_meshes, list(can_meshes.values()), water.n, scene.table_z)
 
+    recent_targets = []
+    grid = np.linspace(-can.body / 2, can.body / 2, 15)
+    body_points = np.array([(x_, y_, z_) for x_ in grid for y_ in grid for z_ in np.linspace(-FLOOR, can.height - FLOOR, 15)
+                            if abs(x_) == grid[-1] or abs(y_) == grid[-1] or z_ == -FLOOR or z_ == can.height - FLOOR])  # the body's surface
+
     def step():
+        now_targets = np.array([robot.targets[robot.index[n]] for n in PLAN_JOINTS])
+        if len(recent_targets) == 2:
+            jump = math.degrees(float(np.abs(now_targets - recent_targets.pop(0)).max()))
+            if jump > res.largest_target_jump_deg:
+                res.largest_target_jump_deg, res.largest_jump_phase = jump, state["phase"]
+        recent_targets.append(now_targets)
         physics()
+        if state["can_in_air"]:
+            T = can_frame()
+            world_points = (T[:3, :3] @ body_points.T).T + T[:3, 3]
+            for q_ in pot_list:
+                r = np.hypot(world_points[:, 0] - q_.x, world_points[:, 1] - q_.y)
+                over = world_points[(r >= q_.radius) & (r <= q_.radius + q_.wall), 2]
+                if len(over):
+                    clearance = (float(over.min()) - (q_.z + q_.height)) * 1000
+                    res.rim_clearance_mm[state["phase"]] = min(res.rim_clearance_mm.get(state["phase"], 1e9), clearance)
         water.set_can(can_frame(), boxes)
         water.step(DT)
         if recorder is not None and state["phase"] != "setup":
@@ -364,14 +392,16 @@ def run_episode(urdf: str, config_path: str, poses_path: str, instruction: str, 
     res.stage_reached = state["phase"] = "transport"
     pot = pots[target_name]
     rim = pot.z + pot.height
+    aim = replace(pot, x=pot.x + miss_pot_mm / 1000)
     res.spilled_before_pour = 0.0
     all_pots = [(q_.x, q_.y) for q_ in pot_list]
-    candidates = pour_headings(kin, pot, all_pots, T_hand_in_can, q, math.atan2(now[1, 0], now[0, 0]), pot_outer, rim, can)
+    candidates = pour_headings(kin, aim, all_pots, T_hand_in_can, q, math.atan2(now[1, 0], now[0, 0]), pot_outer, rim, can,
+                               aim_back=AIM_BACK_LOT if amount == "lot" else 0.0)
     picked = None
     for furthest_tilt, _, _, heading in candidates[:8]:
         if furthest_tilt < 60:
             break
-        pre_pour = upright_over_pot(pot, heading)
+        pre_pour = upright_over_pot(aim, heading, AIM_BACK_LOT if amount == "lot" else 0.0)
         # Up first, across high, then down: the can and arm cross above the pots' rims.
         above = now.copy()
         above[2, 3] = rim + CARRY_ABOVE_RIM
@@ -397,12 +427,15 @@ def run_episode(urdf: str, config_path: str, poses_path: str, instruction: str, 
     for _ in range(2):
         arrived = can_frame()
         q = measured_q()
+        # The arm holding the can droops more than the empty arm did when sag was first measured.
+        sag.update({n: robot.targets[robot.index[n]] - q[n] for n in PLAN_JOINTS})
         T_hand_in_can = np.linalg.inv(arrived) @ kin.hand(q)
         path3, _ = can_path(arrived, pre_pour, q, points=6)
         follow(path3, 0.8)
         hold(0.3)
     arrived = can_frame()
     res.spout_error_mm = float(np.linalg.norm(((arrived - pre_pour) @ np.append(SPOUT, 1.0))[:2])) * 1000
+    res.pour_height_error_mm = float(arrived[2, 3] - pre_pour[2, 3]) * 1000
     res.spilled_before_pour = (water.n - counts()["can"]) / water.n
     say(f"over the pot: spout {res.spout_error_mm:.1f} mm off target, {res.spilled_before_pour * 100:.0f}% of the water already lost")
     if can_frame()[2, 3] < rim:
@@ -470,6 +503,8 @@ def run_episode(urdf: str, config_path: str, poses_path: str, instruction: str, 
     now = can_frame()
     q = measured_q()
     T_hand_in_can = np.linalg.inv(now) @ kin.hand(q)
+    res.return_gap_deg = math.degrees(max(abs(q_tilt[n] - path_down[-1][n]) for n in PLAN_JOINTS))
+    res.return_gap_mm = float(np.linalg.norm((kin.hand(q_tilt) - kin.hand(path_down[-1]))[:3, 3])) * 1000
     # Retrace the transport's joint path: it is known to be reachable and clear of the pots.
     follow(path_down[::-1], 0.6)
     follow(path2[::-1], 3.2)
@@ -648,16 +683,16 @@ def pour_pose(can_upright: np.ndarray, tilt: float) -> np.ndarray:
     return T
 
 
-def upright_over_pot(pot: Pot, heading: float) -> np.ndarray:
-    """The upright can with its spout over the pot's centre."""
+def upright_over_pot(pot: Pot, heading: float, aim_back: float = 0.0) -> np.ndarray:
+    """The upright can with its spout over the pot's centre, or this far behind it along the pour's direction."""
     T = np.eye(4)
     T[:3, :3] = rpy_matrix(0.0, 0.0, heading)
-    T[:3, 3] = np.array([pot.x, pot.y, pot.z + pot.height + SPOUT_ABOVE_RIM]) - T[:3, :3] @ SPOUT
+    T[:3, 3] = np.array([pot.x, pot.y, pot.z + pot.height + SPOUT_ABOVE_RIM]) - T[:3, :3] @ (SPOUT + np.array([aim_back, 0.0, 0.0]))
     return T
 
 
 def pour_headings(kin, pot: Pot, pots_xy: list, T_hand_in_can: np.ndarray, q_start: dict, heading_now: float,
-                  pot_outer: float, rim_z: float, can: CanGeometry, tilts_deg=(0, 30, 60, 75, 88), tolerance: float = 0.006) -> list:
+                  pot_outer: float, rim_z: float, can: CanGeometry, tilts_deg=(0, 30, 60, 75, 88), tolerance: float = 0.006, aim_back: float = 0.0) -> list:
     """Can headings for pouring over this pot, best first: (furthest tilt deg, turn rad, error m, heading).
 
     A heading counts only if the arm misses both pots and wrist_yaw keeps its margin all through the
@@ -668,7 +703,7 @@ def pour_headings(kin, pot: Pot, pots_xy: list, T_hand_in_can: np.ndarray, q_sta
     out = {}
     for deg in range(-180, 180, 15):
         heading = math.radians(deg)
-        upright = upright_over_pot(pot, heading)
+        upright = upright_over_pot(pot, heading, aim_back)
         for k in range(3):
             q = dict(q_start)
             if k:
