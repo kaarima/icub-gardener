@@ -14,7 +14,8 @@ back to the laptop for evaluation in the simulator, which only runs here.
 
 ACT cannot read text, so the instruction goes in as five numbers (`gardener/data/instructions.py`). Without
 them every episode would look alike to it until the pour, and it could only guess the pot and the amount.
-This is a departure from plain ACT; SmolVLA later reads the text itself.
+This is a departure from plain ACT, so every results table calls it **ACT + task ID** (eval_policy.py prints
+the label). SmolVLA later reads the text itself.
 
 ## 1. On the laptop: split and smoke test
 
@@ -29,13 +30,27 @@ Phase 4 step 1. Commit `configs/act_split.json`, so the cloud run uses the same 
 
 ## 2. Upload the dataset (you do this, once)
 
-Zip `data/lerobot/gardener_v1` (about 1.4 GB for 200 episodes) and upload it as a **private** Kaggle
-dataset named `icub-gardener-v1`, or push it to the Hugging Face Hub as a private dataset. Nothing in this
-repo uploads anything.
+Hugging Face Hub, private (then Kaggle and Lightning can both download it):
+
+```bash
+env -u PYTHONPATH ~/miniconda3/envs/gardener-train/bin/hf auth login          # a token with write access
+env -u PYTHONPATH ~/miniconda3/envs/gardener-train/bin/python scripts/push_dataset.py   # asks before uploading
+```
+
+On Kaggle, add your Hub token as a secret named `HF_TOKEN` and download it before training:
+
+```bash
+!pip install -q lerobot==0.4.4
+import os; from kaggle_secrets import UserSecretsClient; os.environ["HF_TOKEN"] = UserSecretsClient().get_secret("HF_TOKEN")
+!hf download kaarima/icub_gardener_v1 --repo-type dataset --local-dir /kaggle/working/gardener_v1
+```
+
+and use `DATASET=/kaggle/working/gardener_v1` below. Or zip `data/lerobot/gardener_v1` and upload it as a
+private Kaggle dataset instead. Nothing in this repo uploads anything without you running it.
 
 ## 3a. Kaggle (T4 x1 or P100, 16 GB, about 30 GPU hours a week, 12 h per session)
 
-New notebook, Accelerator: GPU T4 x1, Internet: on, Add Input: your `icub-gardener-v1` dataset. Cells:
+New notebook, Accelerator: GPU T4 x1, Internet: on (and Add Input: your dataset, if you used a Kaggle dataset). Cells:
 
 ```bash
 !git clone -b act-training https://github.com/kaarima/icub-gardener.git
