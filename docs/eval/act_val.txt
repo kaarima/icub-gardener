@@ -1,0 +1,9 @@
+20 validation episodes, compared with 20 training episodes
+outputs/act/checkpoints/010000/pretrained_model: validation 0.1428, training 0.1152, ratio 1.24
+outputs/act/checkpoints/020000/pretrained_model: validation 0.1343, training 0.0948, ratio 1.42
+outputs/act/checkpoints/030000/pretrained_model: validation 0.1189, training 0.0754, ratio 1.58
+outputs/act/checkpoints/040000/pretrained_model: validation 0.1151, training 0.0722, ratio 1.59
+outputs/act/checkpoints/050000/pretrained_model: validation 0.1136, training 0.0633, ratio 1.80
+outputs/act/checkpoints/060000/pretrained_model: validation 0.1033, training 0.0497, ratio 2.08
+outputs/act/checkpoints/070000/pretrained_model: validation 0.1040, training 0.0508, ratio 2.05
+outputs/act/checkpoints/080000/pretrained_model: validation 0.0986, training 0.0423, ratio 2.33
