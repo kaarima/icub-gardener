@@ -18,7 +18,10 @@
 |---|---|---|---|---|
 | 80k | 0.0986 | 39/50 = 78% (65-87%) | 23/39 | 8 water missed, 2 can not upright, 1 collision |
 | 60k | 0.1033 | 32/50 = 64% (50-76%) | 11/32 | 14 water missed, 4 collisions |
-| 70k | 0.1040 | running | | |
+| 70k | 0.1040 | 31/50 = 62% (48-74%) | 14/31 | 16 water missed, 3 collisions |
+
+**Picked: 80k.** It has the highest dev success and also the lowest validation error (`docs/eval/act_pick.txt`).
+Held-out run started 2026-11-10 04:04.
 
 On dev, 80k never chose the wrong pot (0/50). Its weak point is "just a little": only 3 of 16 of those pours landed in band.
 
