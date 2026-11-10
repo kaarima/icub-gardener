@@ -43,4 +43,4 @@ Full instruction texts: "Water the left plant.", "Water the right plant.",
 | 2026-11-09 | **Big number:** first dataset, 200 episodes from 204 attempts (98%) | eb2b2b3 | the failed seeds: 1015 (water missed), 1056 and 1091 (collision), 1103 (no place plan) |
 | 2026-11-09 | **Fail → fix:** replaying saved actions drifted 12.5°; with the target set every step it drifts 1.4°, and 5/5 replays succeed | 591fb7d | `python scripts/replay_check.py --count 5` |
 | 2026-11-09 | ACT smoke test: training loss 15.9 → 2.4 in 600 steps | a57e308 | `SMOKE=1 bash scripts/train_act.sh` |
-| 2026-11-10 | First full ACT + task ID training, 80k steps overnight: loss 4.7 → 0.056. Best validation error 0.099 at 80k, but validation is 2.3× training (it overfits) | a57e308 | `bash scripts/train_act.sh` (curve: `data/eval/act_train.log`, not in git) |
+| 2026-11-10 | First full ACT + task ID training, 80k steps overnight: loss 4.7 → 0.056. Best validation error 0.099 at 80k, but validation is 2.3× training (it overfits) | a57e308 | `bash scripts/train_act.sh` (curve: `docs/media/act_training_curve.png`, from `python scripts/plot_training.py`) |
