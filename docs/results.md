@@ -1,6 +1,6 @@
 # Results
 
-## ACT + task ID (first policy), in progress, 2026-11-10
+## ACT + task ID (first policy), 2026-11-10
 
 **Training:**
 - ACT, 80k steps, batch 8, on the laptop (RTX 3050, 4 GB), about 4 h 20 min.
@@ -21,14 +21,50 @@
 | 70k | 0.1040 | 31/50 = 62% (48-74%) | 14/31 | 16 water missed, 3 collisions |
 
 **Picked: 80k.** It has the highest dev success and also the lowest validation error (`docs/eval/act_pick.txt`).
-Held-out run started 2026-11-10 04:04.
+Held-out run: 2026-11-10 04:04-04:37, run once.
 
 On dev, 80k never chose the wrong pot (0/50). Its weak point is "just a little": only 3 of 16 of those pours landed in band.
 
-The held-out table against the expert comes next. The expert's held-out report is in `docs/eval/expert_heldout.txt`.
+### Held-out: ACT + task ID next to the expert (seeds 5000-5049, same scenes, same scoring)
 
-**How to resume if the PC was switched off:**
-- Checkpoints are in `outputs/act/checkpoints/` (on disk, not in git).
-- Finish any missing dev run:
-  `python scripts/eval_policy.py outputs/act/checkpoints/070000/pretrained_model --first-seed 0 > data/eval/act_dev_070000.txt`
-- Then start `bash data/eval/heldout.sh` (copy in `docs/eval/heldout.sh`). It picks the checkpoint by the rule above and runs held-out once.
+| | Expert | ACT + task ID (80k) |
+|---|---|---|
+| **Success rate** | 50/50 = 100% (93-100%) | **41/50 = 82% (69-90%)** |
+| Water the left plant. | 9/9 | 5/9 |
+| Water the right plant. | 9/9 | 7/9 |
+| Left plant, just a little | 8/8 | 6/8 |
+| Right plant, just a little | 8/8 | 8/8 |
+| Left plant, a lot | 8/8 | 7/8 |
+| Right plant, a lot | 8/8 | 8/8 |
+| Wrong pot | 0/50 | 0/50 |
+| **Amount in band**, all 50 scenes | 50/50 = 100% (93-100%) | 19/50 = 38% (26-52%) |
+| Amount in band, successful episodes only | 50/50 | 15/41 |
+| **Water in target**, % of what was poured: median, lowest, successful episodes | 100, 90 | 98, 75 |
+| Water in target, mean over all 50 | 98 | 84 |
+| Spill: median, worst | 0%, 10% | 5%, 97% (seed 5038) |
+| **Collisions** (failures) | 0 | 0 |
+| Robot contacts logged | 0 | 2: forearm on the can's handle 4 N (seed 5000), forearm on pot or table 15 N (seed 5038). Both in episodes that had already failed for another reason |
+| **Episode time**, mean of successful episodes | 42.8 s | 40.1 s |
+| Largest joint target jump | 2.00 deg/frame | 2.00 deg/frame |
+
+**Failures (9):**
+- 7 times the water missed the pot.
+- 1 time nothing was poured: seed 5000 never lifted the can.
+- 1 timeout: seed 5016, "a lot". It poured 94% into the target but was still going at 45 s.
+
+The worst instruction is "Water the left plant." at 5/9.
+
+**What it means:**
+- **Pot choice works:** the policy never picked the wrong pot. The five task numbers are enough for it.
+- **Amount works poorly:** only 38% of pours land in the instruction's band, against 100% for the expert. "Just a little" is the worst case, with 1 of 16 in band.
+- **Aim is the main failure:** misses spill out of the pot. The policy lifts the can and pours on the right side, but its spout ends up off the rim more often than the expert's.
+- **82% on held-out vs 78% on dev:** this is within the noise of 50 scenes, so it doesn't show the policy got better.
+
+**Not like-for-like with the expert:**
+- **Episode end:** a policy episode ends when the can is back upright on the table with the hand open for 1 s. The expert's ends after its retract. So the episode times are not measured the same way.
+- **Speed limit:** the 1 deg/step limit on joint targets applies to the policy too.
+- **Settings:** the policy ran with ACT's default of 100 actions per prediction and no temporal ensembling. Neither was tuned.
+- **Narrow can layout:** see the known gap in CLAUDE.md. All 50 held-out scenes come from that narrower range.
+
+Full reports: `docs/eval/act_heldout.txt`, `docs/eval/expert_heldout.txt`.
+
