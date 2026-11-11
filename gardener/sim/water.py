@@ -20,6 +20,9 @@ import warp as wp
 wp.config.verbose = False
 
 
+LURCH_PER_FRAME = 0.003   # m. The can's walls are 6.7 mm from centre to outer surface for a particle; carrying moves about 2 mm a frame
+
+
 @dataclass
 class Pot:
     x: float
@@ -269,6 +272,8 @@ class WaterSim:
         self.pot_s = wp.array(np.array([[q.radius, q.height, q.wall, q.floor] for q in pots], dtype=np.float32).reshape(-1, 4), dtype=wp.vec4, device=d)
         self._box_T = None
         self._box_h = None
+        self._box_from = None
+        self._box_to = None
 
     def set_can(self, T_can: np.ndarray, boxes_local: list) -> None:
         """T_can: 4x4 pose. boxes_local: list of (centre xyz, half sizes xyz) in the can's frame."""
@@ -281,14 +286,24 @@ class WaterSim:
         for centre, h in self.static_boxes:
             tf.append([*centre, 0.0, 0.0, 0.0, 1.0])
             half.append(h)
-        self._box_T = wp.array(np.array(tf, dtype=np.float32), dtype=wp.transform, device=self.device)
-        self._box_h = wp.array(np.array(half, dtype=np.float32), dtype=wp.vec3, device=self.device)
+        new = np.array(tf, dtype=np.float32)
+        # A sudden lurch of the can (7 mm in a frame, when the fingers let go) would jump a wall past the water, so
+        # step() spreads such a move over its substeps. Normal moves stay as one jump per frame: the speed limit in
+        # _finish then keeps the water calm, calmer than real water, but this is what the pours were tested with.
+        same = self._box_to is not None and len(self._box_to) == len(new)
+        lurch = same and np.linalg.norm(new[:, :3] - self._box_to[:, :3], axis=1).max() > LURCH_PER_FRAME
+        self._box_from = self._box_to if lurch else new
+        self._box_to = new
+        if self._box_T is None or self._box_T.shape[0] != len(new):
+            self._box_T = wp.array(new, dtype=wp.transform, device=self.device)
+            self._box_h = wp.array(np.array(half, dtype=np.float32), dtype=wp.vec3, device=self.device)
 
     def step(self, frame_dt: float) -> None:
         p, d, n = self.p, self.device, self.n
         dt = frame_dt / p.substeps
         nb = self._box_T.shape[0]
-        for _ in range(p.substeps):
+        for k in range(p.substeps):
+            self._box_T.assign(_blend_poses(self._box_from, self._box_to, (k + 1) / p.substeps))
             wp.launch(_predict, n, (self.pos, self.vel, self.pred, dt, p.max_speed), device=d)
             self.grid.build(self.pred, self.h)
             for _ in range(p.iterations):
@@ -328,6 +343,15 @@ class WaterSim:
             left &= ~below
         out["air"] = int(left.sum())
         return out
+
+
+def _blend_poses(a: np.ndarray, b: np.ndarray, f: float) -> np.ndarray:
+    """Poses (x, y, z, quaternion) a fraction f of the way from a to b."""
+    out = a + f * (b - a)
+    flip = np.sum(a[:, 3:] * b[:, 3:], axis=1) < 0.0        # q and -q are the same turn: take the short way
+    out[flip, 3:] = a[flip, 3:] - f * (b[flip, 3:] + a[flip, 3:])
+    out[:, 3:] /= np.linalg.norm(out[:, 3:], axis=1, keepdims=True)
+    return out
 
 
 def _matrix_to_quat(R: np.ndarray) -> list:
