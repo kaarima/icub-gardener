@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
-"""Watch one expert episode live in a window. Drag to orbit, scroll to zoom. Saves nothing.
+"""Watch one episode live in a window: the expert, or a trained policy with --policy. Drag to orbit, scroll
+to zoom. Saves nothing.
 
-The robot is drawn from its collision shapes, as in the recorded images, so it looks like boxes and capsules.
+iCub is drawn with its real meshes, in grey, on a physics-free copy that follows the simulated joints, as in
+the recorded images (gardener/data/record.py). The physics itself uses the simplified collision shapes; use
+scripts/view_icub.py --colliders to see those. The window adds a dark floor that the recorded images do not have.
 The window appears after about 5 s of planning and settling, when the can and table are placed.
 
 With --policy, a trained checkpoint drives the robot instead of the expert, after the same setup, and is
