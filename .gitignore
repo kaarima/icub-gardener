@@ -12,3 +12,6 @@ __pycache__/
 .vscode/
 .env
 CLAUDE.md
+
+# personal runbook, kept on the laptop only
+docs/RUNBOOK.md
