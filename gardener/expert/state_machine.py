@@ -69,6 +69,7 @@ class Result:
     seed: int
     success: bool = False
     failure: str = ""
+    failures: list = field(default_factory=list)  # every reason the episode failed, in the order below; failure is the first
     stage_reached: str = ""
     poured_fraction: float = 0.0
     water_in_target: float = 0.0
@@ -370,12 +371,14 @@ def run_episode(urdf: str, config_path: str, poses_path: str, instruction: str, 
         res.amount_ok = band[0] <= res.poured_fraction <= band[1]
         s = cfg["success"]
         on_table = abs(end[2, 3] - rest[2, 3]) < 0.01 and res.final_tilt_deg <= s["max_can_tilt"]
-        res.success = (left > 0 and res.water_in_target >= s["min_water_in_target"] and on_table and state["sim"] <= s["timeout"]
-                       and not contacts)
+        checks = [("nothing poured", left == 0), ("wrong pot", res.wrong_pot),
+                  ("water missed the pot", left > 0 and res.water_in_target < s["min_water_in_target"]),
+                  ("can not upright on the table", not on_table), ("timeout", state["sim"] > s["timeout"]),
+                  ("collision", bool(contacts))]
+        res.failures = [name for name, failed in checks if failed]
+        res.success = not res.failures
         if not res.success:
-            res.failure = ("nothing poured" if left == 0 else "wrong pot" if res.wrong_pot else "water missed the pot"
-                           if res.water_in_target < s["min_water_in_target"] else "can not upright on the table" if not on_table
-                           else "timeout" if state["sim"] > s["timeout"] else "collision")
+            res.failure = res.failures[0]
         return finish(res, state, wall0, c, contacts)
 
     band = {"little": cfg["expert"]["little"], "lot": cfg["expert"]["a_lot"], "normal": [0.40, 0.60]}[amount]

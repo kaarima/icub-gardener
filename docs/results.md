@@ -42,15 +42,24 @@ On dev, 80k never chose the wrong pot (0/50). Its weak point is "just a little":
 | **Water in target**, % of what was poured: median, lowest, successful episodes | 100, 90 | 98, 75 |
 | Water in target, mean over all 50 | 98 | 84 |
 | Spill: median, worst | 0%, 10% | 5%, 97% (seed 5038) |
-| **Collisions** (failures) | 0 | 0 |
-| Robot contacts logged | 0 | 2: forearm on the can's handle 4 N (seed 5000), forearm on pot or table 15 N (seed 5038). Both in episodes that had already failed for another reason |
+| **Collisions**, episodes with a collision among their failure reasons | 0 | 2: seed 5000, forearm on the can's handle 4 N; seed 5038, forearm on a pot or the table 15 N |
+| Collisions as the first failure reason | 0 | 0 (both episodes had already failed for an earlier reason) |
 | **Episode time**, mean of successful episodes | 42.8 s | 40.1 s |
 | Largest joint target jump | 2.00 deg/frame | 2.00 deg/frame |
 
-**Failures (9):**
+**Failures (9), by first reason:**
 - 7 times the water missed the pot.
 - 1 time nothing was poured: seed 5000 never lifted the can.
 - 1 timeout: seed 5016, "a lot". It poured 94% into the target but was still going at 45 s.
+
+**All failure reasons** (an episode can have several; rebuilt from the saved report with
+`eval_expert.py --from-report`, no new run; `docs/eval/act_heldout_all_reasons.txt`):
+- water missed the pot: 7 episodes;
+- timeout: 2 (seed 5016, and seed 5000, which also poured nothing);
+- collision: 2 (seed 5000 and seed 5038, which also missed the pot);
+- nothing poured: 1.
+
+Seed 5000 fails three ways: nothing poured, timeout and collision. The success rate does not change: 41/50.
 
 The worst instruction is "Water the left plant." at 5/9.
 
