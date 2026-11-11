@@ -53,7 +53,7 @@ private Kaggle dataset instead. Nothing in this repo uploads anything without yo
 New notebook, Accelerator: GPU T4 x1, Internet: on (and Add Input: your dataset, if you used a Kaggle dataset). Cells:
 
 ```bash
-!git clone -b act-training https://github.com/kaarima/icub-gardener.git
+!git clone -b main https://github.com/kaarima/icub-gardener.git
 !pip install -q lerobot==0.4.4
 !cd icub-gardener && DATASET=/kaggle/input/icub-gardener-v1/gardener_v1 OUT=/kaggle/working/act \
    STEPS=80000 BATCH=8 WORKERS=4 bash scripts/train_act.sh
@@ -69,7 +69,7 @@ notebook's Output tab. A session that stops can continue with
 Start a Studio with a T4, then in its terminal:
 
 ```bash
-git clone -b act-training https://github.com/kaarima/icub-gardener.git && cd icub-gardener
+git clone -b main https://github.com/kaarima/icub-gardener.git && cd icub-gardener
 pip install lerobot==0.4.4
 # copy the dataset in (upload the zip through the file browser, then unzip into data/lerobot/)
 STEPS=80000 BATCH=8 bash scripts/train_act.sh
