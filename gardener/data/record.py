@@ -152,21 +152,23 @@ class EpisodeRecorder:
             self.matrix.set_position(float(p[0]), float(p[1]), float(p[2]))
             self.water.set_matrix_at(i, self.matrix)
         self.water.instance_matrix_needs_update()
+        for kept, cam in self._place_cameras(eye_position, T_hand):
+            self.renderer.render(self.scene, cam)
+            kept.append(self.renderer.read_pixels()[..., :3].copy())
+        self.state.append([q[n] for n in PLAN_JOINTS] + [fingers, thumb])
+        self.action.append([targets[n] for n in PLAN_JOINTS] + [fingers, thumb])
+
+    def _place_cameras(self, eye_position, T_hand: np.ndarray) -> list:
+        """Point the eye and wrist cameras for this frame; returns (image list, camera) in the order eye, scene, wrist.
+        Shared with scripts/watch_expert.py, so a watched policy sees exactly what the recorded episodes show."""
         self.eye_cam.position.set(*map(float, eye_position))
         self.eye_cam.look_at(*EYE_LOOK_AT)
-        self.renderer.render(self.scene, self.eye_cam)
-        self.eye.append(self.renderer.read_pixels()[..., :3].copy())
-        self.renderer.render(self.scene, self.scene_cam)
-        self.top.append(self.renderer.read_pixels()[..., :3].copy())
         position = T_hand[:3, :3] @ np.array(WRIST_CAMERA[0]) + T_hand[:3, 3]
         target = T_hand[:3, :3] @ np.array(WRIST_CAMERA[1]) + T_hand[:3, 3]
         self.wrist_cam.up.set(*map(float, T_hand[:3, 2]))     # the hand's z axis, so the view turns with the hand
         self.wrist_cam.position.set(*map(float, position))
         self.wrist_cam.look_at(*map(float, target))
-        self.renderer.render(self.scene, self.wrist_cam)
-        self.wrist.append(self.renderer.read_pixels()[..., :3].copy())
-        self.state.append([q[n] for n in PLAN_JOINTS] + [fingers, thumb])
-        self.action.append([targets[n] for n in PLAN_JOINTS] + [fingers, thumb])
+        return [(self.eye, self.eye_cam), (self.top, self.scene_cam), (self.wrist, self.wrist_cam)]
 
     def save(self, path: str, instruction: str, seed: int, metadata: dict) -> None:
         np.savez_compressed(path, eye=np.stack(self.eye), scene=np.stack(self.top), wrist=np.stack(self.wrist),
