@@ -33,7 +33,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--raw", default=os.path.join(ROOT, "data", "raw"))
     ap.add_argument("--root", default=os.path.join(ROOT, "data", "lerobot", "gardener_v1"))
-    ap.add_argument("--repo-id", default="kaarima/icub_gardener_v1")
+    ap.add_argument("--repo-id", default="Kimaa6/icub_gardener_v1")
     ap.add_argument("--sheet", default=None, help="save a contact sheet PNG here")
     ap.add_argument("--images-per-episode", type=int, default=6, help="decoded frames compared per episode")
     args = ap.parse_args()
@@ -50,6 +50,8 @@ def main():
     for ep, path in enumerate(files):
         e = np.load(path)
         n, text = len(e["state"]), str(e["instruction"])
+        cameras = [c for c in ("eye", "wrist", "scene") if c in e]
+        frames = {c: e[c] for c in cameras}     # e[c] unpacks the whole array from the file every time it is used
         tasks[text] = tasks.get(text, 0) + 1
         start = index
         # Numbers, every frame, through the parquet tables only (no video decoding, so this is quick).
@@ -64,17 +66,23 @@ def main():
             item = ds[start + int(i)]
             if item["task"] != text:
                 problems.append(f"episode {ep} frame {i}: task {item['task']!r}, expected {text!r}")
-            worst_psnr = min(worst_psnr, psnr(to_uint8(item["observation.images.eye"]), e["eye"][i]),
-                             psnr(to_uint8(item["observation.images.scene"]), e["scene"][i]))
+            for c in cameras:
+                worst_psnr = min(worst_psnr, psnr(to_uint8(item[f"observation.images.{c}"]), frames[c][i]))
         if len(rows) < 4:
             cells = []
             for f in (0, 0.3, 0.55, 0.7, 0.95):
                 item = ds[start + int(f * (n - 1))]
-                cells.append(np.vstack([to_uint8(item["observation.images.eye"]), to_uint8(item["observation.images.scene"])]))
+                cells.append(np.vstack([to_uint8(item[f"observation.images.{c}"]) for c in cameras]))
             rows.append(np.hstack(cells))
         moves = float(np.abs(np.diff(e["action"][:, :10], axis=0)).max())
         print(f"episode {ep:2d} {os.path.basename(path)}: {n} frames ({n / ds.fps:.1f} s), largest joint target jump {np.degrees(moves):.2f} deg/frame, {text!r}")
         index += n
+    # Every frame must be in the video: one missing frame shifts the rest of that episode's images by one.
+    for key in ds.meta.video_keys:
+        span = (np.asarray(ds.meta.episodes[f"videos/{key}/to_timestamp"]) - np.asarray(ds.meta.episodes[f"videos/{key}/from_timestamp"])) * ds.fps
+        wrong = [ep for ep, (s, n) in enumerate(zip(span, ds.meta.episodes["length"])) if round(float(s)) != int(n)]
+        if wrong:
+            problems.append(f"{key}: video span differs from the episode length in episodes {wrong}")
     if index != ds.num_frames:
         problems.append(f"raw files hold {index} frames, dataset {ds.num_frames}")
     if worst_state > 1e-5:
@@ -82,6 +90,25 @@ def main():
     if worst_psnr < 30:
         problems.append(f"video quality low: PSNR {worst_psnr:.1f} dB")
     stats = ds.meta.stats
+    # ACT divides by these std values, with only 1e-8 added: a zero std would multiply that input by about 1e8.
+    for key in ("observation.environment_state", "observation.state", "action"):
+        if key not in stats:
+            if key != "observation.environment_state" or key in ds.features:
+                problems.append(f"no normalisation stats for {key}")
+            continue
+        names = ds.features[key]["names"]
+        mean, std = np.asarray(stats[key]["mean"]).ravel(), np.asarray(stats[key]["std"]).ravel()
+        lo, hi = np.asarray(stats[key]["min"]).ravel(), np.asarray(stats[key]["max"]).ravel()
+        print(f"{key} stats (name: mean, std, min..max):")
+        for k, n in enumerate(names):
+            print(f"  {n:<16} {mean[k]:8.3f} {std[k]:7.3f}  {lo[k]:7.3f}..{hi[k]:.3f}")
+        if np.any(std < 1e-3):
+            problems.append(f"{key}: std near zero for {[n for n, v in zip(names, std) if v < 1e-3]}")
+    if "observation.environment_state" in stats:
+        mean = np.asarray(stats["observation.environment_state"]["mean"]).ravel()
+        # One-hot: each pair or triple must add up to 1, and mean = share of episodes frames with that value.
+        if abs(mean[0] + mean[1] - 1) > 1e-3 or abs(mean[2:].sum() - 1) > 1e-3:
+            problems.append(f"instruction code means do not add up to 1: {np.round(mean, 3)}")
     print("state stats present:", "observation.state" in stats, "| action std (first 3):", np.round(np.asarray(stats["action"]["std"])[:3], 3))
     print(f"instructions: {tasks}")
     print(f"worst state/action difference from raw {worst_state:.2e}; worst decoded-image PSNR {worst_psnr:.1f} dB")

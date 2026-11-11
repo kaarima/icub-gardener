@@ -44,15 +44,19 @@ class LiveViewer(EpisodeRecorder):
         self.controls = tp.OrbitControls(self.camera, self.canvas)
         self.controls.target = tp.Vector3(*SCENE_CAMERA[1])
         self.water = None
+        self.real_look = True
+        self.physics_robot = None
+        self.visual = None
         self.matrix = tp.Matrix4()
         self.frames = 0
         self.stop_after = stop_after
         self.started = time.perf_counter()
 
-    def frame(self, eye_position, q, fingers, thumb, targets, particles):
+    def frame(self, eye_position, T_hand, q, fingers, thumb, targets, particles):
         self.frames += 1
         if self.frames % 2:
             return
+        self._pose_robot()
         for i, p in enumerate(particles):
             self.matrix.set_position(float(p[0]), float(p[1]), float(p[2]))
             self.water.set_matrix_at(i, self.matrix)

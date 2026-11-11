@@ -1,0 +1,4 @@
+080000: dev 39/50, validation 0.0986
+060000: dev 32/50, validation 0.1033
+070000: dev 31/50, validation 0.1040
+PICK 080000 (rule: highest dev success, tie -> lower validation error)

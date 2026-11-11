@@ -27,17 +27,33 @@ def main():
     ap.add_argument("--instruction", default="Water the left plant.")
     ap.add_argument("--can-yaw", type=float, default=None, help="deg; overrides the seed's random rotation")
     ap.add_argument("--quiet", action="store_true")
+    ap.add_argument("--miss-pot-mm", type=float, default=0.0, help="aim the pour this far off the pot, towards iCub: a deliberate spill")
     ap.add_argument("--record", default=None, help="if the episode succeeds, save it to this .npz file")
+    ap.add_argument("--fps", type=int, default=25, help="frames saved per second with --record")
+    ap.add_argument("--policy", default=None, help="run this trained policy (a pretrained_model folder) instead of the expert")
+    ap.add_argument("--n-action-steps", type=int, default=None, help="with --policy: actions run per predicted chunk")
+    ap.add_argument("--ensemble", type=float, default=None, help="with --policy: temporal ensembling coefficient")
+    ap.add_argument("--replay", default=None, help="play this recorded episode's actions back, open loop, instead of the expert")
     ap.add_argument("--dump-contacts", default=None, help="write the arm's state at each contact to this JSON file")
     args = ap.parse_args()
 
-    recorder = None
-    if args.record:
+    recorder, controller = None, None
+    if args.policy or args.replay:
+        from gardener.policy.client import PolicyController, ReplayController
+        controller = (ReplayController(args.replay) if args.replay else
+                      PolicyController(args.policy, n_action_steps=args.n_action_steps, ensemble=args.ensemble))
+    if args.record or controller is not None:
         from gardener.data.record import EpisodeRecorder
-        recorder = EpisodeRecorder()
+        recorder = EpisodeRecorder(fps=args.fps)
     r = run_episode(os.path.expanduser(args.urdf), args.config, os.path.join(ROOT, "configs", "poses.yaml"),
-                    args.instruction, args.seed, verbose=not args.quiet, can_yaw_deg=args.can_yaw, recorder=recorder)
-    if recorder is not None and r.success:
+                    args.instruction, args.seed, verbose=not args.quiet, can_yaw_deg=args.can_yaw, recorder=recorder, miss_pot_mm=args.miss_pot_mm,
+                    controller=controller)
+    if controller is not None:
+        controller.close()
+    if args.replay:
+        worst, median, n = controller.deviation_deg()
+        print(f"replay: {n} frames compared; joint difference from the recording: largest {worst:.2f} deg, median per frame {median:.3f} deg")
+    if args.record and r.success:
         # Saved under a temporary name and then renamed, so a crash cannot leave a half-written episode.
         tmp = args.record + ".tmp.npz"
         recorder.save(tmp, args.instruction, args.seed, dict(poured=r.poured_fraction, water_in_target=r.water_in_target,
@@ -51,6 +67,9 @@ def main():
           f"spill {r.spill * 100:.0f}%, wrong pot {r.wrong_pot}, amount in band {r.amount_ok}, counts {r.counts}")
     print(f"can: drag {r.drag_mm:.1f} mm, lift {r.lift_mm:.1f} mm, final tilt {r.final_tilt_deg:.1f} deg, placed {r.placed_error_mm:.0f} mm from the start")
     print(f"spout {r.spout_error_mm:.1f} mm off target, {r.spilled_before_pour * 100:.0f}% lost before the pour")
+    print(f"joint targets: largest jump {r.largest_target_jump_deg:.2f} deg/frame; return starts {r.return_gap_deg:.1f} deg, {r.return_gap_mm:.1f} mm from the arm's pose; worst in {r.largest_jump_phase}")
+    print(f"can height at the pour's start: {r.pour_height_error_mm:+.1f} mm from the plan")
+    print("rim clearance mm: " + (", ".join(f"{k} {v:.1f}" for k, v in r.rim_clearance_mm.items()) or "none"))
     print(f"layouts redrawn {r.layouts_redrawn}; contacts: {'; '.join(r.contacts) or 'none'}")
     print(f"wrist_yaw margin {r.min_wrist_yaw_margin_deg:.1f} deg; {r.sim_time:.1f} s simulated in {r.wall_time:.1f} s = {r.sim_time / max(r.wall_time, 1e-6):.2f} x real time")
 
