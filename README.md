@@ -61,6 +61,9 @@ The iCub model comes from [icub-models](https://github.com/robotology/icub-model
 python scripts/run_expert.py --seed 1 --instruction "Water the right plant."   # one episode
 python scripts/watch_expert.py --seed 1 --instruction "Water the right plant." # one episode, in a window
 python scripts/eval_expert.py --episodes 50 --workers 4                        # evaluate on the dev seeds
+python scripts/eval_expert.py --workers 4 --progress data/eval/dev.jsonl       # same, saving each seed as it finishes
+python scripts/eval_policy.py CKPT --first-seed 0 --progress data/eval/act_dev.jsonl   # a trained policy on the dev seeds
+python scripts/watch_expert.py --seed 1 --instruction "Water the right plant." --policy CKPT   # watch a policy
 python scripts/record_episodes.py --count 20 --workers 2                       # record successful episodes
 python scripts/test_pour.py --tilt 60                                          # pour test with no robot
 
@@ -68,5 +71,24 @@ python scripts/test_pour.py --tilt 60                                          #
 env -u PYTHONPATH python scripts/to_lerobot.py
 env -u PYTHONPATH python scripts/check_dataset.py
 ```
+
+`CKPT` is a checkpoint folder written by training, such as `outputs/act/checkpoints/080000/pretrained_model`.
+
+### Stopping and restarting an evaluation
+
+An evaluation of 50 seeds takes 30-60 minutes. With `--progress FILE.jsonl`, each seed's result is added to that
+file the moment the seed finishes, so a stopped run loses only the seeds that were still running.
+
+1. **Stop it** however you like: Ctrl+C, closing the terminal, a shutdown, or the charger watchdog of a run script.
+2. **Restart it with exactly the same command.** It prints `resuming: N of 50 seeds already in FILE`, runs only the
+   missing seeds, then prints the full report over all 50.
+
+Things to know:
+- Saved seeds are reused only when the seed, the instruction and the options all match. So the same file can't mix,
+  say, `--n-action-steps 25` with `--n-action-steps 50`: a different setting starts from zero. Still, use one file
+  per setting to keep things clear.
+- A seed whose episode was killed mid-run is not saved, and runs again on restart.
+- To start over on purpose, delete the `.jsonl` file.
+- The report itself is still printed only at the end, so keep `| tee report.txt` or `> report.txt` on the command.
 
 The progress log is in [docs/log.md](docs/log.md).
