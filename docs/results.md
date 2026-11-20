@@ -78,26 +78,34 @@ The worst instruction is "Water the left plant." at 5/9.
 Full reports: `docs/eval/act_heldout.txt`, `docs/eval/expert_heldout.txt`.
 
 
-### Evaluation settings for ACT + task ID: dev run in progress
+### Evaluation settings for ACT + task ID (dev seeds, 2026-11-20)
 
-**Started 2026-11-20 at 21:55.** The 80k checkpoint is being run on the 50 dev seeds (0-49) with three settings
-for how often it asks the policy for new actions, one at a time:
+The 80k checkpoint on the 50 dev seeds (0-49), with four settings for how often it asks the policy for new
+actions. The run started at 21:55 and ended at 23:42. Held-out was not run: the default setting won, and it has
+already been run on held-out once (41/50 above).
 
-| Setting | What changes |
-|---|---|
-| `--n-action-steps 25` | asks every 25 frames (1 s) instead of every 100 (4 s) |
-| `--n-action-steps 50` | asks every 50 frames (2 s) |
-| `--ensemble 0.01` | asks every frame and averages the overlapping predictions (temporal ensembling, ACT paper) |
+| Setting | Success (95% interval) | Amount in band, all 50 | Aim misses | Timeouts | Can not upright |
+|---|---|---|---|---|---|
+| **Default: every 100 frames (4 s)** | **39/50 = 78% (65-87%)** | **27/50** | **8** | 3 | 2 |
+| Every 25 frames (1 s) | 32/50 = 64% (50-76%) | 27/50 | 11 | 11 | 6 |
+| Every 50 frames (2 s) | 36/50 = 72% (58-83%) | 25/50 | 9 | 9 | 6 |
+| Temporal ensembling 0.01 (every frame) | 39/50 = 78% (65-87%) | 20/50 | 9 | 3 | 2 |
 
-**Why:** most failures above are aim and amount, both decided at the end of the pour, where a policy that asks
-only every 4 s can't react in time.
+- **How the columns are counted:** aim misses, timeouts and can not upright are episodes with that reason among
+  *all* their failure reasons, so one episode can count in several columns.
+- **Source of the default row:** its earlier report, rebuilt with `eval_expert.py --from-report`, with no new run.
 
-**The pick rule, fixed before the results:** highest dev success, compared with the default's 39/50; a tie
-keeps the default. Held-out is not touched until a setting is picked, and then it is run once.
+**Pick: the default.** This follows the rule fixed before the run: highest dev success, with a tie keeping the
+default. Ensembling ties it on success, but is worse on the amount (20/50 against 27/50 in band).
 
-**Files:**
-- run script: `docs/eval/settings.sh`;
-- each seed is saved as it finishes (`--progress`), so a stopped run resumes.
+**What it means:**
+- Asking more often did not fix aim or amount. Re-planning every 1-2 s made the policy hesitate: the timeouts
+  went from 3 to 9-11, and it ended with the can tilted more often.
+- Ensembling smooths the motion but blurs the end of the pour, so fewer pours land in the right band.
+- The weak points come from what the policy learned, not from how often it is asked. The next step is
+  training: train longer, or on more demonstrations.
+- Ensembling and the default fail on different scenes: 5 seeds only the default fails (15, 16, 25, 29, 43) and
+  5 only ensembling fails (6, 23, 36, 38, 42). With 50 scenes, the tie is not a real difference.
 
-A first attempt on 2026-11-12 was stopped by hand partway through the first setting, before results were
-saved per seed. Nothing from it is used.
+**Reports:** `docs/eval/act_dev_080000_{n25,n50,ens}.txt`, `act_dev_080000_all_reasons.txt`, `act_settings_pick.txt`.
+Run script: `docs/eval/settings.sh`. Each seed is saved as it finishes (`--progress`), so a stopped run resumes.
