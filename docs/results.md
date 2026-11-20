@@ -77,3 +77,27 @@ The worst instruction is "Water the left plant." at 5/9.
 
 Full reports: `docs/eval/act_heldout.txt`, `docs/eval/expert_heldout.txt`.
 
+
+### Evaluation settings for ACT + task ID: dev run in progress
+
+**Started 2026-11-20 at 21:55.** The 80k checkpoint is being run on the 50 dev seeds (0-49) with three settings
+for how often it asks the policy for new actions, one at a time:
+
+| Setting | What changes |
+|---|---|
+| `--n-action-steps 25` | asks every 25 frames (1 s) instead of every 100 (4 s) |
+| `--n-action-steps 50` | asks every 50 frames (2 s) |
+| `--ensemble 0.01` | asks every frame and averages the overlapping predictions (temporal ensembling, ACT paper) |
+
+**Why:** most failures above are aim and amount, both decided at the end of the pour, where a policy that asks
+only every 4 s can't react in time.
+
+**The pick rule, fixed before the results:** highest dev success, compared with the default's 39/50; a tie
+keeps the default. Held-out is not touched until a setting is picked, and then it is run once.
+
+**Files:**
+- run script: `docs/eval/settings.sh`;
+- each seed is saved as it finishes (`--progress`), so a stopped run resumes.
+
+A first attempt on 2026-11-12 was stopped by hand partway through the first setting, before results were
+saved per seed. Nothing from it is used.
