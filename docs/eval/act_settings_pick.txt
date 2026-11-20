@@ -1,0 +1,5 @@
+default (100)        dev 39/50, amount in band 23/39
+n_action_steps 25    dev 32/50, amount in band 21/32
+n_action_steps 50    dev 36/50, amount in band 20/36
+ensemble 0.01        dev 39/50, amount in band 17/39
+PICK default (100) (rule: highest dev success; a tie goes to the default)
