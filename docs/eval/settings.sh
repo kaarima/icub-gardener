@@ -3,6 +3,7 @@
 # n_action_steps 25, n_action_steps 50, temporal ensembling 0.01. Then the pick: highest dev success wins
 # against the default setting's 39/50 (data/eval/act_dev_080000.txt); a tie goes to the default.
 # Held-out is NOT run here: it is run once, by hand, on the pick.
+# Each seed is saved as it finishes (act_dev_080000_<name>.jsonl): if the run is stopped, start this script again to resume.
 cd /home/karima/icub-gardener
 [ "$(cat /sys/class/power_supply/AC/online)" = 1 ] || { echo "ON BATTERY: not starting"; exit 1; }
 PY=~/miniconda3/envs/gardener/bin/python
@@ -12,7 +13,7 @@ WATCH=$!
 for S in "n25 --n-action-steps 25" "n50 --n-action-steps 50" "ens --ensemble 0.01"; do
   set -- $S; NAME=$1; shift
   echo "dev $NAME ($*) start $(date)"
-  $PY scripts/eval_policy.py $CK --first-seed 0 "$@" > data/eval/act_dev_080000_$NAME.txt 2>&1
+  $PY scripts/eval_policy.py $CK --first-seed 0 "$@" --progress data/eval/act_dev_080000_$NAME.jsonl > data/eval/act_dev_080000_$NAME.txt 2>&1
   grep -E "^POLICY|^SUCCESS|amount in the|failures by type|episodes with each|^speed" data/eval/act_dev_080000_$NAME.txt
 done
 kill $WATCH

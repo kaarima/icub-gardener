@@ -8,16 +8,19 @@ A failed episode lists its first failure reason and all of them: one episode can
 Usage:
   python scripts/eval_expert.py --episodes 50 --workers 4
   python scripts/eval_expert.py --from-report docs/eval/act_heldout.txt   # rebuild a saved report, no simulation
+  python scripts/eval_expert.py --progress data/eval/dev.jsonl             # stop any time; the same command resumes
 
 Nothing is written to disk.
 """
 import argparse
 import concurrent.futures as cf
+import json
 import math
 import os
 import re
 import subprocess
 import sys
+import threading
 
 import yaml
 
@@ -214,6 +217,8 @@ def main():
     ap.add_argument("--policy", default=None, help="evaluate this trained policy (a pretrained_model folder) instead of the expert")
     ap.add_argument("--n-action-steps", type=int, default=None)
     ap.add_argument("--ensemble", type=float, default=None)
+    ap.add_argument("--progress", default=None,
+                    help="save each seed's result to this .jsonl file as it finishes, and skip seeds already saved there with the same options")
     ap.add_argument("--from-report", default=None, help="rebuild the report from this saved one, with all failure reasons; runs nothing")
     args = ap.parse_args()
     if args.from_report:
@@ -231,9 +236,44 @@ def main():
             EXTRA.extend(["--ensemble", str(args.ensemble)])
         print(f"evaluating the policy {args.policy}, seeds {args.first_seed}-{args.first_seed + args.episodes - 1}")
     jobs = [(args.first_seed + i, INSTRUCTIONS[i % len(INSTRUCTIONS)]) for i in range(args.episodes)]
+    done = load_progress(args.progress, jobs) if args.progress else {}
+    if done:
+        print(f"resuming: {len(done)} of {len(jobs)} seeds already in {args.progress}, running the other {len(jobs) - len(done)}")
+    lock = threading.Lock()
+
+    def run_and_save(job):
+        r = run(job)
+        if args.progress and r["failure"] != "crash":     # a crash may be a stopped run: try that seed again next time
+            with lock, open(args.progress, "a") as f:
+                f.write(json.dumps(dict(key=progress_key(job), result=r)) + "\n")
+                f.flush()
+                os.fsync(f.fileno())
+        return r
+
+    todo = [j for j in jobs if j not in done]
     with cf.ThreadPoolExecutor(args.workers) as ex:
-        res = list(ex.map(run, jobs))
-    report(res, args.workers)
+        fresh = dict(zip(todo, ex.map(run_and_save, todo)))
+    report([done[j] if j in done else fresh[j] for j in jobs], args.workers)
+
+
+def progress_key(job):
+    """What a saved seed must match to be reused: seed, instruction, and the options passed to run_expert.py."""
+    return dict(seed=job[0], text=job[1], extra=EXTRA)
+
+
+def load_progress(path, jobs):
+    """Seeds already finished in an earlier, stopped run with the same options, from the --progress file."""
+    done = {}
+    if os.path.exists(path):
+        for line in open(path):
+            try:
+                saved = json.loads(line)
+            except json.JSONDecodeError:      # a line cut off when the run was stopped
+                continue
+            job = (saved["key"]["seed"], saved["key"]["text"])
+            if job in jobs and saved["key"] == progress_key(job):
+                done[job] = saved["result"]
+    return done
 
 
 if __name__ == "__main__":
