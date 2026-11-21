@@ -8,7 +8,7 @@ cd /home/karima/icub-gardener
 [ "$(cat /sys/class/power_supply/AC/online)" = 1 ] || { echo "ON BATTERY: not starting"; exit 1; }
 PY=~/miniconda3/envs/gardener/bin/python
 CK=outputs/act/checkpoints/080000/pretrained_model
-( while sleep 20; do [ "$(cat /sys/class/power_supply/AC/online)" = 1 ] || { echo "CHARGER UNPLUGGED at $(date): stopping"; pkill -f "[e]val_expert.py"; pkill -f "[r]un_expert.py"; exit; }; done ) &
+( while sleep 20; do [ "$(cat /sys/class/power_supply/AC/online)" = 1 ] || { echo "CHARGER UNPLUGGED at $(date): stopping"; pkill -f "[e]val_policy.py"; pkill -f "[r]un_expert.py"; pkill -f "[p]olicy_server.py"; exit; }; done ) &
 WATCH=$!
 for S in "n25 --n-action-steps 25" "n50 --n-action-steps 50" "ens --ensemble 0.01"; do
   set -- $S; NAME=$1; shift
