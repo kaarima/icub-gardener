@@ -6,42 +6,51 @@ Robot-learning simulation: the iCub humanoid picks up a watering can with its fi
 
 ## Status (November 2026)
 
-**The scripted expert works, and no policy has been trained yet.** It performs the whole task from an instruction such as "Give the left plant a lot of water": reach, grasp, lift check, carry, pour, return, place, release and retract.
+**The scripted expert works, and the first learned policy, ACT + task ID, succeeds on 82% of held-out scenes.**
+The expert performs the whole task from an instruction such as "Give the left plant a lot of water": reach,
+grasp, lift check, carry, pour, return, place, release and retract. Its 200 recorded demonstrations trained ACT.
 
-![One recorded episode: eye camera above, scene camera below](docs/media/2026-11-08_episode_sheet.png)
-
-*An early test episode, drawn from the robot's collision shapes, as this build has no visual meshes.*
+![One recorded episode with the real iCub meshes](docs/media/2026-11-09_real_icub_sheet.png)
 
 | Stage | State |
 |---|---|
 | iCub in PhysX, with separate finger drives | Done |
 | Grasp held by friction only, thumb closing last | Done |
 | Particle water in Warp, counted per pot | Done |
-| Scripted expert | Working, see results below |
-| Recording to LeRobot format | Pipeline tested on 20 episodes |
-| Wrist camera, plants in the pots, spill reporting | In progress |
-| First dataset of 200 episodes | Next |
-| ACT and SmolVLA training | Not started |
+| Scripted expert | Done: 50/50 on held-out |
+| Wrist camera, real iCub meshes, plants in the pots, spill reporting | Done |
+| Dataset of 200 demonstrations in LeRobot format | Done (private on Hugging Face) |
+| ACT + task ID | First policy trained: 41/50 on held-out |
+| More demonstrations, then retrain ACT | Next |
+| SmolVLA | Not started |
 | cuRobo motion planning | Not started |
 
 ## Results
 
-Scripted expert over randomised scenes. Tuning uses the dev seeds only; the held-out seeds are never tuned on.
+All in simulation, over randomised scenes. Tuning uses the dev seeds only; the held-out seeds are run once per
+final version and never tuned on. Intervals are 95% Wilson intervals.
 
 | | Dev (seeds 0-49) | Held-out (seeds 5000-5049) |
 |---|---|---|
-| **Success** | 46/50 = 92% (95% interval 81-97%) | 46/50 = 92% (81-97%) |
-| Poured amount in the instruction's band | 49/50 | 49/50 |
-| Worst drag while grasping | 9.3 mm | 16.1 mm |
-| Lowest `wrist_yaw` margin | 7.0° | 5.9° |
+| **Scripted expert: success** | 50/50 = 100% (93-100%) | 50/50 = 100% (93-100%) |
+| Expert: poured amount in the instruction's band | 50/50 | 50/50 |
+| **ACT + task ID (80k steps): success** | 39/50 = 78% (65-87%) | 41/50 = 82% (69-90%) |
+| ACT + task ID: poured amount in band, all 50 scenes | 27/50 | 19/50 |
+| ACT + task ID: wrong pot | 0/50 | 0/50 |
 
-Success means at least 70% of the poured water lands in the instructed pot, the can ends upright on the table, nothing but the hand touches anything, and the episode finishes within the time limit.
+Success means at least 70% of the poured water lands in the instructed pot, the can ends upright on the table,
+nothing but the hand touches anything, and the episode finishes within the time limit.
+
+The policy never picks the wrong plant. Its weak points are aim (7 of its 9 held-out failures are water that
+missed the pot) and the amount, worst for "just a little". Changing how often it asks for new actions did not help
+(see [docs/results.md](docs/results.md)), so the next step is more demonstrations. Full tables and caveats, such
+as policy and expert episodes ending differently, are in [docs/results.md](docs/results.md).
 
 ## Known limitations
 
 - **Narrow can layout:** scenes where the can or open hand would meet a pot are redrawn, so most scenes have the can close to iCub. Results don't yet cover the full ±8 cm range. cuRobo is planned to restore it.
-- **Time limit:** 45 s rather than the 30 s first planned. Episodes take about 43 s.
-- **Images:** the robot is drawn from collision shapes, and the can's solid body hides the water level.
+- **Time limit:** 45 s rather than the 30 s first planned. Expert episodes take about 43 s.
+- **Images:** the can's solid body hides the water level.
 - **Water:** the can moves the water, but the water doesn't push back. Its weight is added to the can at the start and stays constant during the pour.
 - **Pot contacts:** can-body contacts under 10 N aren't counted, because they can't be told apart from fingers touching the can.
 
