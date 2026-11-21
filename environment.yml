@@ -62,6 +62,7 @@ dependencies:
       - nvidia-nvtx==13.0.85
       - pillow==12.3.0
       - sympy==1.14.0
+      - threepp==2026.10.11
       - torch==2.14.1
       - torchvision==0.29.1
       - triton==3.8.0
