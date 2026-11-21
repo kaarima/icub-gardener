@@ -3,6 +3,7 @@
 #
 # Same command on Kaggle, Lightning AI or the laptop; only the paths and sizes change. See docs/training.md.
 #   DATASET=/path/to/gardener_v1 OUT=/path/to/outputs/act STEPS=80000 bash scripts/train_act.sh
+#   v2 (400 episodes): DATASET=/path/to/gardener_v2 REPO_ID=Kimaa6/icub_gardener_v2 SPLIT=configs/act_split_v2.json ...
 #   SMOKE=1 bash scripts/train_act.sh       # laptop check: 200 steps, batch 4, nothing kept that matters
 #
 # Defaults follow the ACT paper and LeRobot (chunk of 100 actions = 4 s at 25 fps, lr 1e-5, KL weight 10),
@@ -19,11 +20,12 @@ DEVICE="${DEVICE:-cuda}"
 AMP="${AMP:-true}"
 if [ "${SMOKE:-0}" = 1 ]; then STEPS=200; BATCH=4; SAVE=100; OUT="${OUT}_smoke"; fi
 SPLIT="${SPLIT:-$HERE/configs/act_split.json}"
+REPO_ID="${REPO_ID:-Kimaa6/icub_gardener_v1}"
 TRAIN_EPISODES="$(python -c "import json;print(json.load(open('$SPLIT'))['train'])" | tr -d ' ')"
 LEROBOT_TRAIN="${LEROBOT_TRAIN:-lerobot-train}"
 echo "ACT: $STEPS steps, batch $BATCH, on $DEVICE, $(python -c "print(len($TRAIN_EPISODES))") training episodes, output $OUT"
 "$LEROBOT_TRAIN" \
-  --dataset.repo_id=Kimaa6/icub_gardener_v1 \
+  --dataset.repo_id="$REPO_ID" \
   --dataset.root="$DATASET" \
   --dataset.episodes="$TRAIN_EPISODES" \
   --policy.type=act \
