@@ -64,6 +64,13 @@ Checkpoints land in `/kaggle/working/act/checkpoints/<step>/pretrained_model`: d
 notebook's Output tab. A session that stops can continue with
 `lerobot-train --config_path=/kaggle/working/act/checkpoints/last/pretrained_model/train_config.json --resume=true`.
 
+### Dataset v2 (400 demonstrations): `notebooks/train_act_v2_kaggle.ipynb`
+
+The second run changes only the data: 400 demonstrations, split by `make_split.py --keep-val` into 360 training
+and 40 validation episodes, the 20 v1 validation episodes kept as validation (`configs/act_split_v2.json`). The
+notebook checks the dataset and split before training, trains with the v1 settings, runs `val_loss.py` and zips
+the 3 checkpoints with the lowest validation error. Its first cell lists what must be done before running it.
+
 ## 3b. Lightning AI (free credits, a real Linux machine with a terminal)
 
 Start a Studio with a T4, then in its terminal:
