@@ -5,6 +5,9 @@ First log in with a token that can write (https://huggingface.co/settings/tokens
   env -u PYTHONPATH ~/miniconda3/envs/gardener-train/bin/hf auth login
 Then:
   env -u PYTHONPATH ~/miniconda3/envs/gardener-train/bin/python scripts/push_dataset.py
+  # dataset v2, with its card text (shown on the Hub page)
+  env -u PYTHONPATH ~/miniconda3/envs/gardener-train/bin/python scripts/push_dataset.py --root data/lerobot/gardener_v2 \\
+      --repo-id Kimaa6/icub_gardener_v2 --description docs/datasets/gardener_v2_card.md
 It prints the size first and asks before uploading. Check afterwards on huggingface.co that the repo
 shows "Private".
 """
@@ -21,6 +24,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--root", default=os.path.join(ROOT, "data", "lerobot", "gardener_v1"))
     ap.add_argument("--repo-id", default="Kimaa6/icub_gardener_v1")
+    ap.add_argument("--description", default=None, help="Markdown file shown as the description on the dataset card")
     ap.add_argument("--yes", action="store_true", help="do not ask before uploading")
     args = ap.parse_args()
     ds = LeRobotDataset(args.repo_id, root=args.root)
@@ -29,7 +33,8 @@ def main():
     print("It will be uploaded as a PRIVATE dataset repo.")
     if not args.yes and input("Upload? [y/N] ").strip().lower() != "y":
         raise SystemExit("not uploaded")
-    ds.push_to_hub(private=True, tags=["lerobot", "icub", "simulation"], license="apache-2.0")
+    card = {"dataset_description": open(args.description).read()} if args.description else {}
+    ds.push_to_hub(private=True, tags=["lerobot", "icub", "simulation"], license="apache-2.0", **card)
     print(f"done: https://huggingface.co/datasets/{args.repo_id} (check that it says Private)")
 
 
