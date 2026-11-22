@@ -109,3 +109,27 @@ default. Ensembling ties it on success, but is worse on the amount (20/50 agains
 
 **Reports:** `docs/eval/act_dev_080000_{n25,n50,ens}.txt`, `act_dev_080000_all_reasons.txt`, `act_settings_pick.txt`.
 Run script: `docs/eval/settings.sh`. Each seed is saved as it finishes (`--progress`), so a stopped run resumes.
+
+
+## Dataset v2 (400 demonstrations), 2026-11-22
+
+**Recording:** 200 more expert demonstrations, seeds 1204-1409. 200 of 206 attempts succeeded (97%; v1: 200 of 204).
+- No seed is a dev seed (0-49) or a held-out seed (5000-5049), and none reuses v1's 1000-1203.
+- Dataset `Kimaa6/icub_gardener_v2` (to be uploaded as private). Episodes 0-199 are v1's, unchanged.
+- **Split** (`configs/act_split_v2.json`): 360 training and 40 validation episodes, none in both. The 20 v1
+  validation episodes stay in validation, plus 20 new ones balanced by instruction.
+
+**Known video issue: 11 single-frame AV1 encoding glitches in the wrist-camera video.**
+- **What:** a rectangle in the top right of the wrist view shows grey instead of the table, on one frame, during the
+  pour.
+- **Seeds (episode, frame):** 1220 (216, 581), 1230 (225, 615), 1244 (239, 571), 1290 (283, 621), 1304 (297, 575),
+  1328 (321, 577), 1332 (325, 629), 1346 (338, 583), 1404 (394, 619 and 621), 1406 (396, 581).
+- **The raw recorded frames are clean** in that region, so it is the video encoding, not the simulation.
+- **None of these episodes is in validation.**
+- **Scale:** 11 of 196,596 wrist frames (0.006%).
+- Also one smaller 6-block patch in the eye camera: seed 1314 (episode 307, frame 681), raw clean.
+- **Accepted as they are**; not re-encoded.
+- **Limits of the scan:** it covered every frame of the new episodes 200-399 only. A few glitches fainter than its
+  cut-off may remain.
+
+Scan method and table: `docs/eval/v2_video_scan.txt`. Example: `docs/media/2026-11-22_wrist_encoding_glitch.png`.

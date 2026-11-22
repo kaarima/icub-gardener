@@ -21,7 +21,7 @@ grasp, lift check, carry, pour, return, place, release and retract. Its 200 reco
 | Wrist camera, real iCub meshes, plants in the pots, spill reporting | Done |
 | Dataset of 200 demonstrations in LeRobot format | Done (private on Hugging Face) |
 | ACT + task ID | First policy trained: 41/50 on held-out |
-| More demonstrations, then retrain ACT | Next |
+| Dataset v2: 400 demonstrations | Recorded and checked; retraining ACT on it is next |
 | SmolVLA | Not started |
 | cuRobo motion planning | Not started |
 

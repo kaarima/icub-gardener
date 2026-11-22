@@ -1,0 +1,43 @@
+Dataset v2 video scan, 2026-11-22: new episodes 200-399 (seeds 1204-1409), every frame, 3 cameras.
+196,596 frames per camera, 589,788 in all. Read-only; per-frame values in data/eval/v2_video_scan.npz (local).
+
+How (scripts/scan_video_glitches.py, glitch_regions.py, glitch_sheets.py):
+- Decode with torchcodec as LeRobot does (checked: 0 pixel difference from LeRobot's own decoding), compare with the raw
+  recorded images in 16x16-pixel blocks.
+- "bias": a block whose colour is shifted one way (a wrong flat colour), unlike compression blur at edges and water
+  dots, which goes both ways. Candidates: frames with a block over 6.0 (876 frames).
+- Size of the shifted region: water-dot blur gives 1-5 neighbouring blocks (862 frames), the glitches 14-24 blocks.
+- Raw check: in the same region, the raw frame against the average of its two neighbouring raw frames.
+- Rendering check: raw frames that differ from both neighbours while the neighbours agree ("spike"). The top ones are
+  fast motion at release (fingers opening, wrist camera moving); the raw images are clean.
+
+Result: 11 single-frame encoding glitches, all wrist camera, all during the pour.
+A rectangle in the top right of the view shows grey instead of the table. The raw frame is clean there (it differs
+from its neighbours by 0.2-2.1 on 0-255, against 4.9-10.8 between decoded and raw).
+
+  seed  episode  frame  region (blocks of 196)
+  1220    216     581    23
+  1230    225     615    15
+  1244    239     571    24
+  1290    283     621    24
+  1304    297     575    24
+  1328    321     577    24
+  1332    325     629    24
+  1346    338     583    24
+  1404    394     619    14
+  1404    394     621    22
+  1406    396     581    23
+
+Also one smaller patch, 6 blocks, eye camera: seed 1314 (episode 307), frame 681; raw clean.
+None of these episodes is in validation (configs/act_split_v2.json); all are training episodes.
+Rate: 11 of 196,596 wrist frames (0.006%).
+
+Decision (2026-11-22): accepted as they are. Not re-encoded: the AV1 encoder is very likely deterministic, so the same
+settings would give the same frames.
+
+Limits:
+- The faintest confirmed glitch scored 6.3, just over the 6.0 cut-off, so a few fainter ones may exist below it.
+- Episodes 0-199 (the v1 episodes) were not scanned.
+- Seed 1244 frame 571 is the image the dataset check flagged (PSNR 29.7 dB, the only sampled image under 30 dB).
+
+Example: docs/media/2026-11-22_wrist_encoding_glitch.png (raw | decoded | difference x4).
