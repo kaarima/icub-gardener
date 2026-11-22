@@ -9,7 +9,8 @@ Then:
   env -u PYTHONPATH ~/miniconda3/envs/gardener-train/bin/python scripts/push_dataset.py --root data/lerobot/gardener_v2 \\
       --repo-id Kimaa6/icub_gardener_v2 --description docs/datasets/gardener_v2_card.md
 On a slow or flaky connection add --large: it uploads file by file and a rerun skips the files already done
-(a plain upload that stalls starts again from zero).
+(a plain upload that stalls starts again from zero). With --large, --workers sets how many files go up at once:
+keep it small on a slow line, or each connection gets so little speed that the storage server drops it.
 It prints the size first and asks before uploading. Check afterwards on huggingface.co that the repo
 shows "Private".
 """
@@ -28,6 +29,7 @@ def main():
     ap.add_argument("--repo-id", default="Kimaa6/icub_gardener_v1")
     ap.add_argument("--description", default=None, help="Markdown file shown as the description on the dataset card")
     ap.add_argument("--large", action="store_true", help="resumable upload, file by file (for slow connections)")
+    ap.add_argument("--workers", type=int, default=None, help="with --large: files uploaded at once (default: CPU count - 2)")
     ap.add_argument("--yes", action="store_true", help="do not ask before uploading")
     args = ap.parse_args()
     ds = LeRobotDataset(args.repo_id, root=args.root)
@@ -36,6 +38,10 @@ def main():
     print("It will be uploaded as a PRIVATE dataset repo.")
     if not args.yes and input("Upload? [y/N] ").strip().lower() != "y":
         raise SystemExit("not uploaded")
+    if args.workers:  # LeRobot does not pass num_workers on, so set it on the Hub client
+        import functools
+        from huggingface_hub import HfApi
+        HfApi.upload_large_folder = functools.partialmethod(HfApi.upload_large_folder, num_workers=args.workers)
     card = {"dataset_description": open(args.description).read()} if args.description else {}
     ds.push_to_hub(private=True, tags=["lerobot", "icub", "simulation"], license="apache-2.0",
                    upload_large_folder=args.large, **card)
