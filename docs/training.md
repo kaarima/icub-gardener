@@ -71,6 +71,19 @@ and 40 validation episodes, the 20 v1 validation episodes kept as validation (`c
 notebook checks the dataset and split before training, trains with the v1 settings, runs `val_loss.py` and zips
 the 3 checkpoints with the lowest validation error. Its first cell lists what must be done before running it.
 
+Lessons from the first v2 runs (2026-11-22/23):
+
+- **Kaggle's `transformers` breaks LeRobot 0.4.4.** Kaggle ships `transformers` 5.x, which needs a newer
+  `huggingface-hub` than LeRobot 0.4.4 allows, and LeRobot imports `transformers` whenever it is installed. ACT does
+  not use it (the laptop env has none), so the notebook uninstalls it in cell 3 and checks the import there.
+- **A `!` line that fails does not stop a notebook.** The first run printed one line, failed silently in training,
+  then zipped an empty result. Steps that matter now run through `subprocess` and `assert`, so a failure stops the run.
+- **Draft session vs committed version.** Running the cells in the editor is a *draft session*: it stops when the
+  browser loses its connection, and `/kaggle/working` is lost with it. A run started with **Save Version, Save & Run
+  All (Commit)** runs on Kaggle's side with the browser closed and keeps its Output. Use the committed version for
+  anything longer than a few minutes.
+- **Same seed, same numbers.** Two runs on T4s gave loss 7.168 and 7.167 at step 200, and 1.179 at step 2,000.
+
 ## 3b. Lightning AI (free credits, a real Linux machine with a terminal)
 
 Start a Studio with a T4, then in its terminal:
@@ -86,7 +99,8 @@ Switch the Studio back to CPU, or stop it, when training ends: credits are used 
 
 ## How long
 
-Not measured yet. Measure it: the first 1000 steps print their speed. 80,000 steps at batch 8 is about 3,600
+Measured on a Kaggle T4 (2026-11-23, dataset v2, batch 8): about 5.0 steps/s, so 80,000 steps take about 4 h 25 min,
+well inside Kaggle's 12 h limit. For the record: the first 1000 steps print their speed. 80,000 steps at batch 8 is about 3,600
 passes over each training frame. If the T4 is too slow for one session, use `STEPS=40000`, then compare
 checkpoints with the validation error before training longer.
 
