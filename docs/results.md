@@ -173,3 +173,41 @@ Scan method and table: `docs/eval/v2_video_scan.txt`. Example: `docs/media/2026-
   - **v1 stays the project's best policy.** File: `docs/eval/act_v2_heldout.txt`.
 
 Files: `docs/eval/act_v2_dev_{060000,070000,080000}.txt`, `docs/eval/act_v2_pick.txt`.
+
+### Why is v2 worse at negative yaw? Two offline checks, 2026-11-23 (no simulation)
+
+**1. Is the data different? No.** Per demo, from the measured joints and forward kinematics
+(`scripts/compare_pour_demos.py`, output `docs/eval/pour_demos.txt`):
+- **Can yaw:** v1's 200 demos have mean +0.8 deg, sd 14.9; the new 200 have mean -1.4 deg, sd 14.5.
+  Below -10 deg: 59 vs 67 demos.
+- **The pours match in every yaw range:**
+  - same pour heading: mean about -90 deg, sd about 24 deg;
+  - same furthest tilt: 75-79 deg;
+  - same start (about 20.0 s) and length (about 4.4 s);
+  - the same spread of the joints at the furthest tilt.
+- **Split by target pot, the expert picks the same pour headings, in the same proportions, in both groups.** For
+  example, right pot at -25..-10 deg: -120 deg in 25 of 25 (v1) and 34 of 35 (new).
+- **The expert code did not change between the recordings:** only the failure logging and the video queue did.
+- **One thing both groups share:** right pot, can yaw -25..-10 deg is the only case where the arm joints vary a
+  lot at the same heading. The shoulder spread is 36-41 deg there, against 2-14 deg elsewhere. So the expert reaches
+  that pour with more than one arm shape. It is equally true in v1's demos, so it does not explain v1 vs v2, but it
+  is a hard case for any policy.
+
+**2. Does v2 predict the expert's actions worse at negative yaw? No.** Error of the arm and torso actions on the
+40 validation episodes, which neither policy trained on (`scripts/action_error_by_yaw.py`, output
+`docs/eval/action_error_by_yaw.txt`). Measured in degrees, over the 100-step chunk, for every 10th frame:
+
+| Can yaw | Episodes | Pour: v1 80k | Pour: v2 60k | Rest of the episode: v1 | Rest: v2 |
+|---|---|---|---|---|---|
+| -25..-10 | 15 | 2.45 | 2.49 | 1.80 | 1.60 |
+| -10..0 | 7 | 2.37 | 2.32 | 1.62 | 1.44 |
+| 0..10 | 9 | 3.00 | 2.69 | 1.50 | 1.42 |
+| 10..25 | 9 | 2.29 | 2.74 | 1.32 | 1.24 |
+
+- **On recorded demos, v2 is as good as v1 at negative yaw**, and slightly better outside the pour.
+- **So the gap only appears when the policy drives the robot itself.** Its own small errors change what it sees next,
+  and v2 drifts off where v1 recovers. Offline error cannot show this.
+- **Training longer (160k steps) is therefore not a well-supported fix:** v2 already fits the demos as well as v1.
+- **Limits:**
+  - 7-15 validation episodes per yaw range;
+  - a joint-angle error is not the spout's position error over the pot.

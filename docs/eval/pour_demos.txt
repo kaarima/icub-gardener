@@ -1,0 +1,44 @@
+v1: 200 demos; can yaw per bin {'-25..-10': 59, '-10..0': 41, '0..10': 31, '10..25': 69}; mean +0.8, sd 14.9
+new: 200 demos; can yaw per bin {'-25..-10': 67, '-10..0': 44, '0..10': 38, '10..25': 51}; mean -1.4, sd 14.5
+
+can yaw -25..-10 deg
+  v1   n= 59 | pour heading deg mean  -90.4 sd  24.8 (15-deg bins -120:25, -90:1, -75:24, -60:9)
+       max tilt  75.2 | pour length s  4.2 | pour starts at s  20.1 | hand at start mm sd x/y/z [ 59. 159.   2.]
+       joints at furthest tilt, sd deg: {'torso_pitch': 7.8, 'torso_roll': 9.4, 'torso_yaw': 8.6, 'r_shoulder_pitch': 43.8, 'r_shoulder_roll': 41.3, 'r_shoulder_yaw': 31.9, 'r_elbow': 9.1, 'r_wrist_prosup': 9.9, 'r_wrist_pitch': 4.6, 'r_wrist_yaw': 3.6}
+       joints at furthest tilt, mean deg: {'torso_pitch': 3.4, 'torso_roll': 17.2, 'torso_yaw': -11.1, 'r_shoulder_pitch': -62.1, 'r_shoulder_roll': 53.2, 'r_shoulder_yaw': 56.2, 'r_elbow': 21.9, 'r_wrist_prosup': -15.3, 'r_wrist_pitch': 5.4, 'r_wrist_yaw': -5.0}
+  new  n= 67 | pour heading deg mean  -96.9 sd  24.3 (15-deg bins -135:1, -120:34, -90:5, -75:20, -60:7)
+       max tilt  76.8 | pour length s  4.4 | pour starts at s  20.0 | hand at start mm sd x/y/z [ 54. 153.   2.]
+       joints at furthest tilt, sd deg: {'torso_pitch': 8.7, 'torso_roll': 9.4, 'torso_yaw': 7.1, 'r_shoulder_pitch': 45.5, 'r_shoulder_roll': 43.0, 'r_shoulder_yaw': 33.3, 'r_elbow': 8.9, 'r_wrist_prosup': 11.1, 'r_wrist_pitch': 4.9, 'r_wrist_yaw': 3.7}
+       joints at furthest tilt, mean deg: {'torso_pitch': 4.5, 'torso_roll': 16.0, 'torso_yaw': -8.6, 'r_shoulder_pitch': -57.4, 'r_shoulder_roll': 57.9, 'r_shoulder_yaw': 53.1, 'r_elbow': 21.1, 'r_wrist_prosup': -14.5, 'r_wrist_pitch': 5.9, 'r_wrist_yaw': -5.1}
+
+can yaw -10..0 deg
+  v1   n= 41 | pour heading deg mean  -92.0 sd  20.5 (15-deg bins -120:9, -105:11, -90:4, -75:13, -60:4)
+       max tilt  78.8 | pour length s  4.5 | pour starts at s  20.1 | hand at start mm sd x/y/z [ 51. 158.  11.]
+       joints at furthest tilt, sd deg: {'torso_pitch': 9.0, 'torso_roll': 12.2, 'torso_yaw': 8.2, 'r_shoulder_pitch': 50.2, 'r_shoulder_roll': 45.3, 'r_shoulder_yaw': 37.0, 'r_elbow': 11.2, 'r_wrist_prosup': 12.5, 'r_wrist_pitch': 3.8, 'r_wrist_yaw': 4.7}
+       joints at furthest tilt, mean deg: {'torso_pitch': 5.6, 'torso_roll': 15.4, 'torso_yaw': -11.5, 'r_shoulder_pitch': -45.0, 'r_shoulder_roll': 65.8, 'r_shoulder_yaw': 42.3, 'r_elbow': 25.0, 'r_wrist_prosup': -17.4, 'r_wrist_pitch': 5.6, 'r_wrist_yaw': -5.3}
+  new  n= 44 | pour heading deg mean  -90.1 sd  23.2 (15-deg bins -120:11, -105:11, -90:2, -75:11, -60:8, -45:1)
+       max tilt  75.8 | pour length s  4.4 | pour starts at s  20.0 | hand at start mm sd x/y/z [ 56. 164.   2.]
+       joints at furthest tilt, sd deg: {'torso_pitch': 8.5, 'torso_roll': 11.6, 'torso_yaw': 8.9, 'r_shoulder_pitch': 51.5, 'r_shoulder_roll': 44.0, 'r_shoulder_yaw': 38.2, 'r_elbow': 11.8, 'r_wrist_prosup': 11.9, 'r_wrist_pitch': 4.8, 'r_wrist_yaw': 4.1}
+       joints at furthest tilt, mean deg: {'torso_pitch': 6.9, 'torso_roll': 13.5, 'torso_yaw': -13.2, 'r_shoulder_pitch': -42.9, 'r_shoulder_roll': 69.3, 'r_shoulder_yaw': 38.8, 'r_elbow': 26.2, 'r_wrist_prosup': -17.7, 'r_wrist_pitch': 6.5, 'r_wrist_yaw': -6.2}
+
+can yaw 0..10 deg
+  v1   n= 31 | pour heading deg mean  -90.5 sd  22.0 (15-deg bins -120:8, -105:6, -90:2, -75:12, -60:2, -45:1)
+       max tilt  78.1 | pour length s  4.5 | pour starts at s  20.0 | hand at start mm sd x/y/z [ 43. 161.   2.]
+       joints at furthest tilt, sd deg: {'torso_pitch': 11.1, 'torso_roll': 13.3, 'torso_yaw': 8.5, 'r_shoulder_pitch': 48.6, 'r_shoulder_roll': 49.0, 'r_shoulder_yaw': 38.8, 'r_elbow': 9.9, 'r_wrist_prosup': 11.5, 'r_wrist_pitch': 5.1, 'r_wrist_yaw': 4.8}
+       joints at furthest tilt, mean deg: {'torso_pitch': 6.6, 'torso_roll': 13.5, 'torso_yaw': -10.7, 'r_shoulder_pitch': -50.0, 'r_shoulder_roll': 63.6, 'r_shoulder_yaw': 43.8, 'r_elbow': 22.6, 'r_wrist_prosup': -14.9, 'r_wrist_pitch': 7.6, 'r_wrist_yaw': -5.7}
+  new  n= 38 | pour heading deg mean  -90.4 sd  23.8 (15-deg bins -120:11, -105:8, -75:11, -60:8)
+       max tilt  76.1 | pour length s  4.6 | pour starts at s  20.1 | hand at start mm sd x/y/z [ 51. 165.   2.]
+       joints at furthest tilt, sd deg: {'torso_pitch': 9.1, 'torso_roll': 11.2, 'torso_yaw': 7.6, 'r_shoulder_pitch': 50.6, 'r_shoulder_roll': 48.8, 'r_shoulder_yaw': 38.8, 'r_elbow': 10.7, 'r_wrist_prosup': 11.4, 'r_wrist_pitch': 4.3, 'r_wrist_yaw': 3.8}
+       joints at furthest tilt, mean deg: {'torso_pitch': 6.4, 'torso_roll': 12.0, 'torso_yaw': -10.0, 'r_shoulder_pitch': -44.1, 'r_shoulder_roll': 64.7, 'r_shoulder_yaw': 40.7, 'r_elbow': 24.4, 'r_wrist_prosup': -17.2, 'r_wrist_pitch': 6.6, 'r_wrist_yaw': -6.4}
+
+can yaw 10..25 deg
+  v1   n= 69 | pour heading deg mean  -97.5 sd  22.8 (15-deg bins -135:1, -120:29, -105:10, -90:1, -75:23, -60:5)
+       max tilt  77.1 | pour length s  4.6 | pour starts at s  20.0 | hand at start mm sd x/y/z [ 61. 168.   2.]
+       joints at furthest tilt, sd deg: {'torso_pitch': 10.3, 'torso_roll': 12.6, 'torso_yaw': 8.0, 'r_shoulder_pitch': 48.8, 'r_shoulder_roll': 45.6, 'r_shoulder_yaw': 38.1, 'r_elbow': 10.9, 'r_wrist_prosup': 10.9, 'r_wrist_pitch': 4.9, 'r_wrist_yaw': 4.3}
+       joints at furthest tilt, mean deg: {'torso_pitch': 8.5, 'torso_roll': 11.1, 'torso_yaw': -12.3, 'r_shoulder_pitch': -37.4, 'r_shoulder_roll': 76.7, 'r_shoulder_yaw': 34.1, 'r_elbow': 23.8, 'r_wrist_prosup': -17.5, 'r_wrist_pitch': 7.8, 'r_wrist_yaw': -6.4}
+  new  n= 51 | pour heading deg mean  -93.5 sd  24.3 (15-deg bins -135:2, -120:18, -105:4, -90:3, -75:17, -60:7)
+       max tilt  76.3 | pour length s  4.5 | pour starts at s  20.0 | hand at start mm sd x/y/z [ 55. 166.   2.]
+       joints at furthest tilt, sd deg: {'torso_pitch': 10.9, 'torso_roll': 12.8, 'torso_yaw': 8.3, 'r_shoulder_pitch': 49.6, 'r_shoulder_roll': 46.6, 'r_shoulder_yaw': 40.8, 'r_elbow': 7.2, 'r_wrist_prosup': 9.8, 'r_wrist_pitch': 5.3, 'r_wrist_yaw': 4.7}
+       joints at furthest tilt, mean deg: {'torso_pitch': 7.5, 'torso_roll': 13.7, 'torso_yaw': -13.1, 'r_shoulder_pitch': -47.5, 'r_shoulder_roll': 66.8, 'r_shoulder_yaw': 39.6, 'r_elbow': 20.5, 'r_wrist_prosup': -14.4, 'r_wrist_pitch': 8.0, 'r_wrist_yaw': -5.5}
+
+per-demo table: data/eval/pour_demos.npz

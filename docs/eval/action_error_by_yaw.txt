@@ -1,0 +1,35 @@
+
+mean arm action error in degrees over the 100-step chunk; 40 validation episodes
+columns: outputs/act/checkpoints/080000/pretrained_model | outputs/act_v2/checkpoints/060000/pretrained_model
+
+v1 validation episodes (0-199)
+  yaw -25..-10 pour  episodes  6:  2.42 |  2.33
+  yaw -25..-10 other episodes  6:  1.77 |  1.59
+  yaw -10..  0 pour  episodes  4:  2.62 |  2.47
+  yaw -10..  0 other episodes  4:  1.62 |  1.41
+  yaw   0.. 10 pour  episodes  2:  2.57 |  3.04
+  yaw   0.. 10 other episodes  2:  1.88 |  1.57
+  yaw  10.. 25 pour  episodes  8:  2.35 |  2.74
+  yaw  10.. 25 other episodes  8:  1.35 |  1.26
+
+new validation episodes (200-399)
+  yaw -25..-10 pour  episodes  9:  2.46 |  2.60
+  yaw -25..-10 other episodes  9:  1.83 |  1.61
+  yaw -10..  0 pour  episodes  3:  1.95 |  2.07
+  yaw -10..  0 other episodes  3:  1.62 |  1.48
+  yaw   0.. 10 pour  episodes  7:  3.12 |  2.60
+  yaw   0.. 10 other episodes  7:  1.39 |  1.38
+  yaw  10.. 25 pour  episodes  1:  1.83 |  2.68
+  yaw  10.. 25 other episodes  1:  1.14 |  1.07
+
+all
+  yaw -25..-10 pour  episodes 15:  2.45 |  2.49
+  yaw -25..-10 other episodes 15:  1.80 |  1.60
+  yaw -10..  0 pour  episodes  7:  2.37 |  2.32
+  yaw -10..  0 other episodes  7:  1.62 |  1.44
+  yaw   0.. 10 pour  episodes  9:  3.00 |  2.69
+  yaw   0.. 10 other episodes  9:  1.50 |  1.42
+  yaw  10.. 25 pour  episodes  9:  2.29 |  2.74
+  yaw  10.. 25 other episodes  9:  1.32 |  1.24
+
+per-frame table: /home/karima/icub-gardener/data/eval/action_error_by_yaw.json
