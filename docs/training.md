@@ -119,3 +119,26 @@ Choose the checkpoint on validation error and the dev seeds (`--first-seed 0`), 
 The policy is scored exactly like the expert: `run_controller` in `gardener/expert/state_machine.py` runs it
 in the same scenes, with the same contact checks and success rule, and counts the episode as done when the
 can is back on the table, upright, with the hand open for 1 s.
+
+## SmolVLA on dataset v1 (Kaggle)
+
+Notebook: `notebooks/train_smolvla_v1_kaggle.ipynb`; command: `scripts/train_smolvla.sh`.
+- **Same data as ACT v1:** the 180 training and 20 validation episodes of `configs/act_split.json`, seed 1000.
+- **What it sees:**
+  - the 3 cameras, renamed eye -> camera1, wrist -> camera2, scene -> camera3, as the base model expects;
+  - the 12 joint values;
+  - the instruction sentence;
+  - **no task-ID vector.**
+- **Model:** `lerobot/smolvla_base`, 450 M parameters (vision 86 M, language model 205 M + 47 M output layer,
+  action expert 98 M). Only the action expert and the small projections (about 100 M) are trained; the rest is
+  frozen and stored in bfloat16.
+- **Installs:** `lerobot[smolvla]==0.4.4` pins transformers to 4.57 or later 4.x, replacing Kaggle's 5.x.
+- **Downloads:** about 2.9 GB, of base weights and the SmolVLM2 backbone.
+- **Measure first:** cell 6 runs 60 steps and measures peak GPU memory and seconds per step. It then picks the batch
+  (32, or 16 if 32 does not fit) and as many steps as fit in 9 h, at most 20,000, with 5 checkpoints.
+  Run cells 1-6 once interactively and read the numbers before the long committed run.
+- **Use a T4, not a P100:** the frozen parts run in bfloat16, which the P100 does not have.
+- **For the laptop evaluation (not done yet):**
+  - the `gardener-train` env needs the same SmolVLA extra (transformers 4.x);
+  - `scripts/policy_server.py` must send the camera names that the checkpoint's rename step expects;
+  - it must also build the backbone without downloading its 2 GB of weights, because the checkpoint already holds them.
