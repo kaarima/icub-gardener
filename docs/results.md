@@ -158,9 +158,13 @@ Scan method and table: `docs/eval/v2_video_scan.txt`. Example: `docs/media/2026-
 - **Not a coverage gap:** the 200 new demos have more negative-yaw cans than v1's (111 below 0 deg vs 100).
 - **Not worse demos:** in every yaw range, the new demos put 97-99% of the water in the pot, as v1's do, with the
   same drag and episode length.
-- **Open question:** whether the eval setup itself has changed. The eval runs slower than in v1's evaluation (0.40-0.43 x
-  real time vs 0.52), and conda was cleaned in between. v1's 80k checkpoint is being re-run on the same dev seeds to
-  check that it still scores 39/50.
-- **Held-out (5000-5049) is not run yet:** it runs once, and only after this check.
+- **Not the eval setup:** v1's 80k checkpoint, re-run on the same dev seeds on 2026-11-23, scores 39/50 again,
+  with every one of the 50 seeds the same as on 2026-11-20 (`docs/eval/act_v1_recheck_080000.txt`). The two
+  checkpoints' policy configs are identical. The v2 eval ran slower (0.40-0.43 x real time; the v1 recheck 0.55),
+  but speed does not change the simulated result.
+- **So the v2 policy itself is worse at negative yaw.** Two possible causes, not yet tested:
+  1. **Half the passes over each demo:** the same 80k steps x batch 8 over 360 episodes instead of 180.
+  2. **Run-to-run luck:** each version was trained only once.
+- **Held-out (5000-5049):** run once on the v2 pick (60k), below.
 
 Files: `docs/eval/act_v2_dev_{060000,070000,080000}.txt`, `docs/eval/act_v2_pick.txt`.
