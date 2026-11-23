@@ -1,0 +1,17 @@
+40 validation episodes, compared with 40 training episodes
+Loading weights from local directory
+/kaggle/working/act_v2/checkpoints/010000/pretrained_model: validation 0.1356, training 0.1371, ratio 0.99
+Loading weights from local directory
+/kaggle/working/act_v2/checkpoints/020000/pretrained_model: validation 0.1185, training 0.1139, ratio 1.04
+Loading weights from local directory
+/kaggle/working/act_v2/checkpoints/030000/pretrained_model: validation 0.1070, training 0.0949, ratio 1.13
+Loading weights from local directory
+/kaggle/working/act_v2/checkpoints/040000/pretrained_model: validation 0.1006, training 0.0862, ratio 1.17
+Loading weights from local directory
+/kaggle/working/act_v2/checkpoints/050000/pretrained_model: validation 0.0922, training 0.0780, ratio 1.18
+Loading weights from local directory
+/kaggle/working/act_v2/checkpoints/060000/pretrained_model: validation 0.0900, training 0.0677, ratio 1.33
+Loading weights from local directory
+/kaggle/working/act_v2/checkpoints/070000/pretrained_model: validation 0.0857, training 0.0669, ratio 1.28
+Loading weights from local directory
+/kaggle/working/act_v2/checkpoints/080000/pretrained_model: validation 0.0851, training 0.0617, ratio 1.38

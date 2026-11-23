@@ -133,3 +133,34 @@ Run script: `docs/eval/settings.sh`. Each seed is saved as it finishes (`--progr
   cut-off may remain.
 
 Scan method and table: `docs/eval/v2_video_scan.txt`. Example: `docs/media/2026-11-22_wrist_encoding_glitch.png`.
+
+## ACT + task ID retrained on dataset v2, dev seeds, 2026-11-23
+
+**Training** (Kaggle, one T4): same policy settings as v1, 80k steps, batch 8, 360 training episodes.
+- Validation error (40 validation episodes): 80k 0.0851, 70k 0.0857, 60k 0.0900. v1's best was 0.0986, but on its
+  own 20 validation episodes, so the two are not directly comparable.
+- Overfitting is much smaller: validation/training ratio 1.38 at 80k (v1: 2.33). Files: `docs/eval/act_v2_val.txt`.
+
+**Dev seeds 0-49, default settings, exactly as v1 was evaluated:**
+
+| Checkpoint | Dev success | Amount in band | Water missed the pot | Validation |
+|---|---|---|---|---|
+| v2 80k | 27/50 | 20/27 | 21 | 0.0851 |
+| v2 70k | 26/50 | 18/26 | 19 | 0.0857 |
+| **v2 60k (pick)** | **32/50** | 19/32 | 17 | 0.0900 |
+| v1 80k (the v1 pick) | 39/50 | 23/39 | 10 | 0.0986 (v1 split) |
+
+**v2 is worse than v1 on dev, although its validation error is lower.** What was checked:
+- **The misses are pours beside the pot:** in the failed episodes, on average 60-77% of the poured water lands
+  on the table. The right pot is chosen every time (no wrong-pot pours).
+- **They depend on the can's yaw.** Dev successes by can yaw (60k vs v1): -25..-10 deg 3/12 vs 7/12;
+  -10..0 6/11 vs 8/11; 0..10 8/11 vs 8/11; 10..25 15/16 vs 16/16.
+- **Not a coverage gap:** the 200 new demos have more negative-yaw cans than v1's (111 below 0 deg vs 100).
+- **Not worse demos:** in every yaw range, the new demos put 97-99% of the water in the pot, as v1's do, with the
+  same drag and episode length.
+- **Open question:** whether the eval setup itself has changed. The eval runs slower than in v1's evaluation (0.40-0.43 x
+  real time vs 0.52), and conda was cleaned in between. v1's 80k checkpoint is being re-run on the same dev seeds to
+  check that it still scores 39/50.
+- **Held-out (5000-5049) is not run yet:** it runs once, and only after this check.
+
+Files: `docs/eval/act_v2_dev_{060000,070000,080000}.txt`, `docs/eval/act_v2_pick.txt`.

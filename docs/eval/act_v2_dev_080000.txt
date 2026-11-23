@@ -1,0 +1,126 @@
+POLICY: ACT + task ID
+evaluating the policy outputs/act_v2/checkpoints/080000/pretrained_model, seeds 0-49
+seed instruction                               result     yaw   dx   dy fill  drag  lift pour% tgt% spill  jump band tilt place  marg spout lost  first reason (reached) | all reasons
+   0 Water the left plant.                     ok         6.8   69  -69   53  11.4 157.9    51   86    14   2.0  yes  0.5    62   8.0   0.0    0
+   1 Water the right plant.                    ok         0.6   54    2   88   9.2 172.1    58   88    12   2.0  yes  0.0    53   8.4   0.0    0
+   2 Give the left plant just a little water.  FAIL     -11.9   50  -65   55  13.9 167.8    24   98     2   2.0  yes  0.3   143   6.6   0.0    0  collision (reached end) | collision
+   3 Give the right plant just a little water. FAIL     -20.7   48   13   52   7.0 146.8    14   42    58   2.0   no  0.0    63   8.5   0.0    0  water missed the pot (reached end) | water missed the pot
+   4 Give the left plant a lot of water.       FAIL      22.2   23  -76   66  11.9 159.7    62   69    31   2.0  yes  0.0    20   8.4   0.0    0  water missed the pot (reached end) | water missed the pot
+   5 Give the right plant a lot of water.      ok        15.3   -8  -71   80   6.8 192.0    74   99     1   2.0  yes  0.1    79   8.2   0.0    0
+   6 Water the left plant.                     FAIL       1.9   29  -60   57  10.8 162.0    53   68    32   2.0  yes  2.3    63   7.6   0.0    0  water missed the pot (reached end) | water missed the pot
+   7 Water the right plant.                    FAIL       6.3   44  -44   85  12.8 172.0    64   62    38   2.0   no  1.1    48   8.3   0.0    0  water missed the pot (reached end) | water missed the pot
+   8 Give the left plant just a little water.  FAIL      -8.7   50  -12   89   7.4 145.4    34    6    94   2.0   no  0.0    44   8.1   0.0    0  water missed the pot (reached end) | water missed the pot
+   9 Give the right plant just a little water. ok        18.5  -50  -79   54  14.4 160.5    23  100     0   2.0  yes  0.0    55   7.7   0.0    0
+  10 Give the left plant a lot of water.       ok        22.8   53  -56   50  10.3 174.6    76  100     0   2.0  yes  0.4    19   8.0   0.0    0
+  11 Give the right plant a lot of water.      ok       -18.6   72   20   65   5.9 182.7    50   96     4   2.0   no  0.0    53   8.2   0.0    0
+  12 Water the left plant.                     FAIL     -12.5   63   57   87  14.2 159.6    64   22    78   2.0   no  0.0   116   8.4   0.0    0  water missed the pot (reached end) | water missed the pot
+  13 Water the right plant.                    ok        18.2   80  -61   83   8.8 174.7    56   99     1   2.0  yes  0.0    36   8.1   0.0    0
+  14 Give the left plant just a little water.  FAIL      16.5   71   36   58  19.3 138.8     6   15    85   2.0   no  0.0   134   7.4   0.0    0  water missed the pot (reached end) | water missed the pot
+  15 Give the right plant just a little water. FAIL       9.6   74  -11   81  20.8 155.6    17   59    41   2.0   no  0.0    26   7.3   0.0    0  water missed the pot (reached end) | water missed the pot
+  16 Give the left plant a lot of water.       FAIL       3.3   73   78   62  25.8 169.8    47   58    42   2.0   no  0.0   107   7.8   0.0    0  water missed the pot (reached end) | water missed the pot
+  17 Give the right plant a lot of water.      ok        17.3   38  -78   48  12.0 184.0    64   86    14   2.0  yes  0.0    50   8.3   0.0    0
+  18 Water the left plant.                     ok        -5.0   72  -76   76  10.4 172.8    55   96     4   2.0  yes  0.0    94   7.6   0.0    0
+  19 Water the right plant.                    ok        -4.0   56  -11   86   9.7 182.7    52   92     8   2.0  yes  0.0    31   7.3   0.0    0
+  20 Give the left plant just a little water.  FAIL     -11.0   31   -8   63   9.1 157.2    35   18    82   2.0   no  0.0    45   8.1   0.0    0  water missed the pot (reached end) | water missed the pot
+  21 Give the right plant just a little water. ok        14.1   67  -77   70  10.9 163.2    26   85    15   2.0  yes  0.0    31   8.1   0.0    0
+  22 Give the left plant a lot of water.       ok        -6.7   36   78   50  17.3 167.5    35  100     0   2.0   no  0.0   123   8.0   0.0    0
+  23 Give the right plant a lot of water.      ok         9.7   60   40   72  13.8 192.7    73   88    12   2.0  yes  0.0    80   7.6   0.0    0
+  24 Water the left plant.                     FAIL      -8.5   48   16   60  15.4 167.8    55   17    83   2.0  yes  0.0   107   8.3   0.0    0  water missed the pot (reached end) | water missed the pot
+  25 Water the right plant.                    FAIL     -17.0   17  -68   40  15.3 188.2    28   85    15   2.0   no 18.2    10   8.0   0.0    0  can not upright on the table (reached time limit) | can not upright on the table; timeout
+  26 Give the left plant just a little water.  ok        -0.4   19   -5   52  13.9 150.2    27   94     6   2.0  yes  1.3    76   8.0   0.0    0
+  27 Give the right plant just a little water. ok         9.9   64  -73   56  11.7 162.0    23   98     2   2.0  yes  0.0    30   7.6   0.0    0
+  28 Give the left plant a lot of water.       ok        17.6   43  -75   84  10.5 117.6    12  100     0   2.0   no  0.7    24   8.3   0.0    0
+  29 Give the right plant a lot of water.      FAIL     -22.5    3  -38   65  15.3 165.2    33   16    84   2.0   no  0.0   134   6.9   0.0    0  water missed the pot (reached end) | water missed the pot
+  30 Water the left plant.                     FAIL     -13.2   64   69   61  15.3 163.5    50    7    93   2.0  yes 20.2   166   8.3   0.0    0  water missed the pot (reached time limit) | water missed the pot; can not upright on the table; timeout
+  31 Water the right plant.                    ok        20.2  -12  -63   43   6.9 179.2    47   93     7   2.0  yes  0.0    78   8.2   0.0    0
+  32 Give the left plant just a little water.  FAIL     -17.0   53   -6   69   6.2 144.9    36   18    82   2.0   no  3.5    85   8.0   0.0    0  water missed the pot (reached end) | water missed the pot
+  33 Give the right plant just a little water. FAIL      -2.8   42    2   68  10.0 158.6    37   55    45   2.0   no  1.4    11   8.6   0.0    0  water missed the pot (reached end) | water missed the pot
+  34 Give the left plant a lot of water.       FAIL     -24.8   59   80   84  14.5 170.3    71   65    35   2.0  yes  1.1   109   7.8   0.0    0  water missed the pot (reached end) | water missed the pot
+  35 Give the right plant a lot of water.      ok        -8.1   70   71   63   9.9 183.6    59   99     1   2.0   no  0.0   184   7.0   0.0    0
+  36 Water the left plant.                     FAIL     -16.0   63  -15   60   5.9 158.9    60   45    55   2.0  yes  0.8    35   8.3   0.0    0  water missed the pot (reached end) | water missed the pot
+  37 Water the right plant.                    ok        10.2  -27  -77   73   7.9 180.0    61  100     0   2.0   no  0.0    59   6.7   0.0    0
+  38 Give the left plant just a little water.  ok        -0.7  -35  -69   52  10.0 142.0    23  100     0   2.0  yes  3.2    73   7.2   0.0    0
+  39 Give the right plant just a little water. FAIL       0.1   70   27   67  17.9 162.5    38   59    41   2.0   no  0.0     8   7.1   0.0    0  water missed the pot (reached end) | water missed the pot
+  40 Give the left plant a lot of water.       ok        11.5   68  -76   75  13.8 172.8    80   99     1   2.0  yes  0.0    50   8.2   0.0    0
+  41 Give the right plant a lot of water.      ok        22.7   70  -33   78  11.1 188.4    73   98     2   2.0  yes  0.0    12   7.6   0.0    0
+  42 Water the left plant.                     ok        13.7   44   75   62  10.6 156.0    53  100     0   2.0  yes  0.0   147   6.9   0.0    0
+  43 Water the right plant.                    FAIL       7.6   55   77   42  13.9 177.5    34   19    81   2.0   no  0.0    91   6.7   0.0    0  water missed the pot (reached end) | water missed the pot
+  44 Give the left plant just a little water.  ok       -18.9   76  -36   53   6.7 161.2    25  100     0   2.0  yes  1.1    41   8.1   0.0    0
+  45 Give the right plant just a little water. ok         3.7   71   13   66  19.9 173.4    32   84    16   2.0   no  0.0    35   7.0   0.0    0
+  46 Give the left plant a lot of water.       ok        20.3   49  -61   44  11.4 196.6    92  100     0   2.0   no  0.8    10   8.3   0.0    0
+  47 Give the right plant a lot of water.      ok        12.1   -6  -63   78   7.3 192.9    75   99     1   2.0  yes  0.0    41   8.4   0.0    0
+  48 Water the left plant.                     FAIL      -5.6   43  -46   70  14.3 161.1    51   63    37   2.0  yes  0.0    27   8.1   0.0    0  water missed the pot (reached end) | water missed the pot
+  49 Water the right plant.                    FAIL      -6.9   59   29   70  21.5 176.9    44   13    87   2.0  yes 19.4    17   8.4   0.0    0  water missed the pot (reached time limit) | water missed the pot; can not upright on the table; timeout
+seed 2 contacts: r_forearm on pot/table during controlled (15 N)
+
+scene layouts redrawn because the can overlapped a pot: 714 over 50 scenes
+
+SUCCESS: 27/50 = 54% (95% interval 40-67%)
+successful episodes: water in target % median 99.0, range 84.0-100.0; drag mm median 10.5, range 5.9-19.9; lift mm median 173.4, range 117.6-196.6; wrist margin deg median 8.0, range 6.7-8.4
+amount in the instruction's band: 20/27
+speed: 0.40 x real time with 2 workers; mean episode 40.3 s simulated
+spill, % of the poured water on the table or floor: median 14, worst 94 (seed 8); over 5%: 31/50
+largest joint target jump, deg/frame: median 2.00, worst 2.00; over 2: 0/50
+
+seed: jump phase | return gap deg, mm | rim clearance mm per phase
+   0:   2.0 controlled|   0.0   0.0 | controlled=8.9
+   1:   2.0 controlled|   0.0   0.0 | controlled=0.0
+   2:   2.0 controlled|   0.0   0.0 | controlled=11.3
+   3:   2.0 controlled|   0.0   0.0 | controlled=17.7
+   4:   2.0 controlled|   0.0   0.0 | controlled=8.4
+   5:   2.0 controlled|   0.0   0.0 | controlled=-0.0
+   6:   2.0 controlled|   0.0   0.0 | controlled=5.2
+   7:   2.0 controlled|   0.0   0.0 | controlled=0.1
+   8:   2.0 controlled|   0.0   0.0 | controlled=8.1
+   9:   2.0 controlled|   0.0   0.0 | controlled=8.4
+  10:   2.0 controlled|   0.0   0.0 | controlled=4.4
+  11:   2.0 controlled|   0.0   0.0 | controlled=19.0
+  12:   2.0 controlled|   0.0   0.0 | controlled=-0.3
+  13:   2.0 controlled|   0.0   0.0 | controlled=-0.2
+  14:   2.0 controlled|   0.0   0.0 | controlled=-0.0
+  15:   2.0 controlled|   0.0   0.0 | controlled=-0.2
+  16:   2.0 controlled|   0.0   0.0 | controlled=-0.0
+  17:   2.0 controlled|   0.0   0.0 | controlled=18.1
+  18:   2.0 controlled|   0.0   0.0 | controlled=8.4
+  19:   2.0 controlled|   0.0   0.0 | controlled=0.4
+  20:   2.0 controlled|   0.0   0.0 | controlled=9.4
+  21:   2.0 controlled|   0.0   0.0 | controlled=14.7
+  22:   2.0 controlled|   0.0   0.0 | controlled=0.2
+  23:   2.0 controlled|   0.0   0.0 | controlled=0.0
+  24:   2.0 controlled|   0.0   0.0 | controlled=-0.0
+  25:   2.0 controlled|   0.0   0.0 | controlled=-0.0
+  26:   2.0 controlled|   0.0   0.0 | controlled=11.7
+  27:   2.0 controlled|   0.0   0.0 | controlled=-0.0
+  28:   2.0 controlled|   0.0   0.0 | controlled=1.3
+  29:   2.0 controlled|   0.0   0.0 | controlled=-1.9
+  30:   2.0 controlled|   0.0   0.0 | controlled=-0.0
+  31:   2.0 controlled|   0.0   0.0 | controlled=-0.2
+  32:   2.0 controlled|   0.0   0.0 | controlled=7.5
+  33:   2.0 controlled|   0.0   0.0 | controlled=-0.0
+  34:   2.0 controlled|   0.0   0.0 | controlled=9.1
+  35:   2.0 controlled|   0.0   0.0 | controlled=-0.2
+  36:   2.0 controlled|   0.0   0.0 | controlled=11.2
+  37:   2.0 controlled|   0.0   0.0 | controlled=8.5
+  38:   2.0 controlled|   0.0   0.0 | controlled=12.6
+  39:   2.0 controlled|   0.0   0.0 | controlled=14.1
+  40:   2.0 controlled|   0.0   0.0 | controlled=6.9
+  41:   2.0 controlled|   0.0   0.0 | controlled=-0.2
+  42:   2.0 controlled|   0.0   0.0 | controlled=3.8
+  43:   2.0 controlled|   0.0   0.0 | controlled=-0.0
+  44:   2.0 controlled|   0.0   0.0 | controlled=10.4
+  45:   2.0 controlled|   0.0   0.0 | controlled=12.6
+  46:   2.0 controlled|   0.0   0.0 | controlled=12.0
+  47:   2.0 controlled|   0.0   0.0 | controlled=4.2
+  48:   2.0 controlled|   0.0   0.0 | controlled=5.5
+  49:   2.0 controlled|   0.0   0.0 | controlled=0.2
+can height at the pour's start, mm from the plan: lowest +0.0, median +0.0, highest +0.0
+
+by instruction:
+  Water the left plant.                      success 3/9, amount in band 8/9, wrong pot 0/9
+  Water the right plant.                     success 5/9, amount in band 5/9, wrong pot 0/9
+  Give the left plant just a little water.   success 3/8, amount in band 4/8, wrong pot 0/8
+  Give the right plant just a little water.  success 4/8, amount in band 3/8, wrong pot 0/8
+  Give the left plant a lot of water.        success 5/8, amount in band 4/8, wrong pot 0/8
+  Give the right plant a lot of water.       success 7/8, amount in band 5/8, wrong pot 0/8
+failures by type: {'collision': 1, 'water missed the pot': 21, 'can not upright on the table': 1}
+episodes with each failure reason (one episode can have several): {'collision': 1, 'water missed the pot': 21, 'can not upright on the table': 3, 'timeout': 3}
