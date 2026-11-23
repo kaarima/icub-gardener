@@ -142,3 +142,11 @@ Notebook: `notebooks/train_smolvla_v1_kaggle.ipynb`; command: `scripts/train_smo
   - the `gardener-train` env needs the same SmolVLA extra (transformers 4.x);
   - `scripts/policy_server.py` must send the camera names that the checkpoint's rename step expects;
   - it must also build the backbone without downloading its 2 GB of weights, because the checkpoint already holds them.
+- **Colab instead (free T4):** `notebooks/train_smolvla_v1_colab.ipynb`. It is the same run, with the same plan rule,
+  but it can be resumed:
+  - training runs on Colab's local disk;
+  - every finished checkpoint is copied to `MyDrive/icub_gardener_smolvla/`. Drive keeps the optimizer state of the
+    newest checkpoint only, and the models of every fifth of the run;
+  - after a disconnect, Run all resumes from the newest checkpoint on Drive;
+  - the measured plan is saved on Drive, so every session uses the same steps and learning rate schedule.
+  The copy and clean-up rule was tested on a fake 10-checkpoint run with a lost session at checkpoint 5.
