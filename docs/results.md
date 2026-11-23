@@ -165,6 +165,11 @@ Scan method and table: `docs/eval/v2_video_scan.txt`. Example: `docs/media/2026-
 - **So the v2 policy itself is worse at negative yaw.** Two possible causes, not yet tested:
   1. **Half the passes over each demo:** the same 80k steps x batch 8 over 360 episodes instead of 180.
   2. **Run-to-run luck:** each version was trained only once.
-- **Held-out (5000-5049):** run once on the v2 pick (60k), below.
+- **Held-out (5000-5049), run once on the v2 pick (60k), 2026-11-23: 23/50 = 46% (95% interval 33-60%)**; v1: 41/50.
+  - Amount in band: 8/23 (v1: 15/41).
+  - Water missed the pot: 24 (v1: 7).
+  - By can yaw, v2 vs v1: -25..-10 deg 3/15 vs 13/15; -10..0 8/13 vs 12/13; 0..10 6/10 vs 10/10; 10..25 6/12 vs 6/12.
+  - The worst loss is again at strong negative yaw.
+  - **v1 stays the project's best policy.** File: `docs/eval/act_v2_heldout.txt`.
 
 Files: `docs/eval/act_v2_dev_{060000,070000,080000}.txt`, `docs/eval/act_v2_pick.txt`.
