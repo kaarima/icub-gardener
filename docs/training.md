@@ -45,6 +45,15 @@ import os; from kaggle_secrets import UserSecretsClient; os.environ["HF_TOKEN"] 
 !hf download Kimaa6/icub_gardener_v1 --repo-type dataset --local-dir /kaggle/working/gardener_v1
 ```
 
+Dataset v1 went up on 2026-11-23 (`Kimaa6/icub_gardener_v1`, private, 1.42 GB), for SmolVLA on Colab. On this
+laptop's connection, uploads only work over IPv4 and without Xet (see `scripts/ipv4_only.py`):
+
+```bash
+HF_HUB_DISABLE_XET=1 env -u PYTHONPATH ~/miniconda3/envs/gardener-train/bin/python scripts/ipv4_only.py \
+    scripts/push_dataset.py --root data/lerobot/gardener_v1 --repo-id Kimaa6/icub_gardener_v1 \
+    --description docs/datasets/gardener_v1_card.md --large --workers 2
+```
+
 and use `DATASET=/kaggle/working/gardener_v1` below. Or zip `data/lerobot/gardener_v1` and upload it as a
 private Kaggle dataset instead. Nothing in this repo uploads anything without you running it.
 
