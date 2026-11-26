@@ -11,6 +11,3 @@ __pycache__/
 .ipynb_checkpoints/
 .vscode/
 .env
-
-# personal runbook, kept on the laptop only
-docs/RUNBOOK.md
