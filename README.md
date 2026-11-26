@@ -2,6 +2,11 @@
 
 Robot-learning simulation: the iCub humanoid picks up a watering can with its five-fingered hand and waters plants, with the water simulated as particles. The goal is a pipeline from scripted demonstrations to learned policies, imitation learning (ACT) and a Vision-Language-Action model (SmolVLA), that runs on a 4 GB laptop GPU.
 
+![The scripted expert waters the left plant: scene, eye and wrist cameras, 3x speed](docs/media/expert_episode.gif)
+
+*One recorded demonstration, "Give the left plant a lot of water", as the policies see it: scene, eye and wrist
+cameras, 3x speed. Made with `scripts/make_readme_gif.py`.*
+
 **Stack:** threepp, NVIDIA PhysX, NVIDIA Warp and LeRobot. NVIDIA cuRobo is planned; arm paths currently come from a straight-line IK planner.
 
 ## Status (November 2026)
@@ -22,7 +27,7 @@ grasp, lift check, carry, pour, return, place, release and retract. Its 200 reco
 | Dataset of 200 demonstrations in LeRobot format | Done (private on Hugging Face) |
 | ACT + task ID | First policy trained: 41/50 on held-out |
 | Dataset v2: 400 demonstrations | On the Hub (private). ACT + task ID retrained on it: held-out 23/50 vs v1's 41/50, so v1 stays the best; finding out why is next |
-| SmolVLA | Not started |
+| SmolVLA | Fine-tuning on dataset v1 on Colab (resumable notebook) |
 | cuRobo motion planning | Not started |
 
 ## Results
