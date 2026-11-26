@@ -45,7 +45,7 @@ import os; from kaggle_secrets import UserSecretsClient; os.environ["HF_TOKEN"] 
 !hf download Kimaa6/icub_gardener_v1 --repo-type dataset --local-dir /kaggle/working/gardener_v1
 ```
 
-Dataset v1 went up on 2026-11-23 (`Kimaa6/icub_gardener_v1`, private, 1.42 GB), for SmolVLA on Colab. On this
+Dataset v1 went up on 2026-11-23 (`Kimaa6/icub_gardener_v1`, 1.42 GB; both datasets public since 2026-11-26), for SmolVLA on Colab. On this
 laptop's connection, uploads only work over IPv4 and without Xet (see `scripts/ipv4_only.py`):
 
 ```bash

@@ -115,7 +115,7 @@ Run script: `docs/eval/settings.sh`. Each seed is saved as it finishes (`--progr
 
 **Recording:** 200 more expert demonstrations, seeds 1204-1409. 200 of 206 attempts succeeded (97%; v1: 200 of 204).
 - No seed is a dev seed (0-49) or a held-out seed (5000-5049), and none reuses v1's 1000-1203.
-- Dataset `Kimaa6/icub_gardener_v2` (private on the Hugging Face Hub since 2026-11-22, version tag v3.0; all 19 files checked against the local copy, same sizes). Episodes 0-199 are v1's, unchanged.
+- Dataset `Kimaa6/icub_gardener_v2` (on the Hugging Face Hub since 2026-11-22, public since 2026-11-26, version tag v3.0; all 19 files checked against the local copy, same sizes). Episodes 0-199 are v1's, unchanged.
 - **Split** (`configs/act_split_v2.json`): 360 training and 40 validation episodes, none in both. The 20 v1
   validation episodes stay in validation, plus 20 new ones balanced by instruction.
 

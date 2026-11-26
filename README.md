@@ -26,9 +26,9 @@ grasp, lift check, carry, pour, return, place, release and retract. Its 200 reco
 | Particle water in Warp, counted per pot | Done |
 | Scripted expert | Done: 50/50 on held-out |
 | Wrist camera, real iCub meshes, plants in the pots, spill reporting | Done |
-| Dataset of 200 demonstrations in LeRobot format | Done (private on Hugging Face) |
+| Dataset of 200 demonstrations in LeRobot format | Done, public on Hugging Face: [Kimaa6/icub_gardener_v1](https://huggingface.co/datasets/Kimaa6/icub_gardener_v1) |
 | ACT + task ID | First policy trained: 41/50 on held-out |
-| Dataset v2: 400 demonstrations | On the Hub (private). ACT + task ID retrained on it: held-out 23/50 vs v1's 41/50, so v1 stays the best; finding out why is next |
+| Dataset v2: 400 demonstrations | Public on Hugging Face: [Kimaa6/icub_gardener_v2](https://huggingface.co/datasets/Kimaa6/icub_gardener_v2). ACT + task ID retrained on it: held-out 23/50 vs v1's 41/50, so v1 stays the best; finding out why is next |
 | SmolVLA | Fine-tuning on dataset v1 on Colab (resumable notebook) |
 | cuRobo motion planning | Not started |
 
