@@ -1,5 +1,7 @@
 # iCub, the Little Gardener
 
+**Project site:** [iCub, the Little Gardener](https://kaarima.github.io/icub-gardener/)
+
 Robot-learning simulation: the iCub humanoid picks up a watering can with its five-fingered hand and waters plants, with the water simulated as particles. The goal is a pipeline from scripted demonstrations to learned policies, imitation learning (ACT) and a Vision-Language-Action model (SmolVLA), that runs on a 4 GB laptop GPU.
 
 ![The scripted expert waters the left plant: scene, eye and wrist cameras, 3x speed](docs/media/expert_episode.gif)

@@ -1,0 +1,824 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0B0B0F">
+  <meta name="description" content="A simulated iCub humanoid that waters plants from a sentence. Meet the Little Gardener project.">
+  <title>iCub, the Little Gardener</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0B0B0F;
+      --surface: #121218;
+      --surface-raised: #18181f;
+      --pink: #FF4FA3;
+      --white: #F7F5F8;
+      --muted: #AAA6B1;
+      --line: #292831;
+      --green: #8FE0B2;
+      --yellow: #F3D28A;
+      --content: 1120px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: 88px; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(ellipse at 86% 4%, rgb(255 79 163 / 9%), transparent 32rem),
+        var(--bg);
+      color: var(--white);
+      font-family: "Inter", sans-serif;
+      font-size: 16px;
+      line-height: 1.65;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: inherit; }
+    a:focus-visible, button:focus-visible {
+      outline: 2px solid var(--pink);
+      outline-offset: 4px;
+    }
+
+    .skip-link {
+      position: absolute;
+      left: 1rem;
+      top: -4rem;
+      z-index: 20;
+      padding: .6rem 1rem;
+      background: var(--pink);
+      color: #160811;
+      border-radius: .5rem;
+    }
+    .skip-link:focus { top: 1rem; }
+
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      border-bottom: 1px solid rgb(255 255 255 / 8%);
+      background: rgb(11 11 15 / 88%);
+      backdrop-filter: blur(16px);
+    }
+    .nav-wrap {
+      width: min(var(--content), calc(100% - 48px));
+      min-height: 68px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 2rem;
+    }
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: .65rem;
+      flex: 0 0 auto;
+      text-decoration: none;
+      font-size: .9rem;
+      font-weight: 700;
+      letter-spacing: -.025em;
+    }
+    .brand-mark { width: 25px; height: 25px; color: var(--pink); }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: clamp(.85rem, 2.2vw, 1.65rem);
+    }
+    .nav-links a {
+      color: var(--muted);
+      font-size: .78rem;
+      font-weight: 600;
+      text-decoration: none;
+      white-space: nowrap;
+      transition: color .18s ease;
+    }
+    .nav-links a:hover, .nav-links a[aria-current="location"] { color: var(--pink); }
+
+    main { overflow: clip; }
+    .wrap {
+      width: min(var(--content), calc(100% - 48px));
+      margin-inline: auto;
+    }
+    .hero {
+      padding: clamp(5.5rem, 11vw, 9.5rem) 0 5.2rem;
+    }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: .6rem;
+      margin: 0 0 1rem;
+      color: var(--pink);
+      font-size: .72rem;
+      font-weight: 700;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+    .eyebrow::before {
+      width: 22px;
+      height: 1px;
+      background: currentColor;
+      content: "";
+    }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 {
+      max-width: 850px;
+      margin-bottom: 1rem;
+      font-size: clamp(3rem, 8.5vw, 6.8rem);
+      line-height: .99;
+      letter-spacing: -.075em;
+    }
+    h1 span { color: var(--pink); }
+    .hero-lede {
+      max-width: 660px;
+      margin-bottom: 2rem;
+      color: #D0CDD4;
+      font-size: clamp(1.05rem, 2vw, 1.3rem);
+      line-height: 1.55;
+    }
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .75rem;
+      margin-bottom: 3.5rem;
+    }
+    .button {
+      min-height: 46px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: .55rem;
+      padding: .65rem 1rem;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--surface);
+      color: var(--white);
+      font-size: .85rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: border-color .18s ease, transform .18s ease, background .18s ease;
+    }
+    .button:hover { transform: translateY(-2px); border-color: #56515e; }
+    .button.primary {
+      border-color: var(--pink);
+      background: var(--pink);
+      color: #190912;
+    }
+    .button.primary:hover { background: #ff6bb1; }
+    .button svg { width: 16px; height: 16px; }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: .8rem;
+    }
+    .stat {
+      min-height: 118px;
+      padding: 1.1rem 1.2rem;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: linear-gradient(145deg, rgb(255 255 255 / 4%), transparent 70%), var(--surface);
+    }
+    .stat strong {
+      display: block;
+      margin-bottom: .1rem;
+      color: var(--pink);
+      font-size: clamp(1.55rem, 3vw, 2.1rem);
+      line-height: 1.3;
+      letter-spacing: -.06em;
+    }
+    .stat span { color: var(--muted); font-size: .78rem; line-height: 1.45; }
+
+    section { padding: clamp(4.5rem, 9vw, 7rem) 0; }
+    .section-top {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 2rem;
+      margin-bottom: 2rem;
+    }
+    .section-index {
+      margin-bottom: .45rem;
+      color: var(--pink);
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+    }
+    h2 {
+      margin-bottom: 0;
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      line-height: 1.08;
+      letter-spacing: -.06em;
+    }
+    .section-intro {
+      max-width: 440px;
+      margin-bottom: .15rem;
+      color: var(--muted);
+      font-size: .94rem;
+    }
+    .video-frame {
+      overflow: hidden;
+      border: 1px solid #34313a;
+      border-radius: 12px;
+      background: #17171d;
+      box-shadow: 0 24px 80px rgb(0 0 0 / 36%);
+    }
+    .video-frame video {
+      display: block;
+      width: 100%;
+      height: auto;
+      aspect-ratio: 3 / 1;
+      background: #111;
+      object-fit: cover;
+    }
+    .video-caption {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: .85rem 1rem;
+      color: var(--muted);
+      font-size: .77rem;
+    }
+    .video-caption strong { color: var(--white); font-weight: 600; }
+
+    .pipeline {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: .85rem;
+      counter-reset: stage;
+    }
+    .pipeline-card {
+      position: relative;
+      min-height: 222px;
+      padding: 1.2rem;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--surface);
+      counter-increment: stage;
+    }
+    .pipeline-card:not(:last-child)::after {
+      position: absolute;
+      z-index: 1;
+      top: 1.55rem;
+      right: -.72rem;
+      width: 1.5rem;
+      color: var(--pink);
+      content: "→";
+      font-size: 1.1rem;
+      text-align: center;
+    }
+    .step-number {
+      display: block;
+      margin-bottom: 1.2rem;
+      color: var(--pink);
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+    }
+    .step-number::before { content: "0" counter(stage); }
+    .pipeline-card h3 {
+      margin-bottom: .55rem;
+      font-size: 1rem;
+      line-height: 1.35;
+      letter-spacing: -.025em;
+    }
+    .pipeline-card p { margin-bottom: 0; color: var(--muted); font-size: .8rem; line-height: 1.55; }
+    .pipeline-card.next {
+      border-color: rgb(255 79 163 / 45%);
+      background: linear-gradient(145deg, rgb(255 79 163 / 8%), transparent 80%), var(--surface);
+    }
+    .next-label {
+      display: inline-block;
+      margin-top: .9rem;
+      padding: .18rem .45rem;
+      border: 1px solid rgb(255 79 163 / 40%);
+      border-radius: 99px;
+      color: var(--pink);
+      font-size: .64rem;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .results-section { background: linear-gradient(180deg, transparent, rgb(255 255 255 / 2%), transparent); }
+    .results-table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--surface);
+    }
+    .results-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+    .results-table th, .results-table td {
+      padding: 1rem 1.2rem;
+      border-bottom: 1px solid var(--line);
+      vertical-align: middle;
+    }
+    .results-table th {
+      color: var(--muted);
+      font-size: .72rem;
+      font-weight: 600;
+      letter-spacing: .04em;
+    }
+    .results-table td { font-size: .88rem; }
+    .results-table tbody tr:last-child td { border-bottom: 0; }
+    .results-table td:first-child { font-weight: 600; }
+    .result-strong { color: var(--pink); font-weight: 700; }
+    .table-note {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-top: 1rem;
+      color: var(--muted);
+      font-size: .8rem;
+    }
+    .table-note p { margin-bottom: 0; }
+    .table-note strong { color: var(--white); }
+
+    .story-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    .story-card {
+      padding: clamp(1.35rem, 3vw, 2rem);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--surface);
+    }
+    .story-card.featured {
+      border-color: rgb(255 79 163 / 45%);
+      background: linear-gradient(145deg, rgb(255 79 163 / 8%), transparent 70%), var(--surface);
+    }
+    .story-version {
+      margin-bottom: 1.1rem;
+      color: var(--muted);
+      font-size: .75rem;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+    .story-score {
+      display: flex;
+      align-items: baseline;
+      gap: .65rem;
+      margin-bottom: .7rem;
+    }
+    .story-score strong { font-size: clamp(2.4rem, 6vw, 4rem); line-height: 1; letter-spacing: -.07em; }
+    .featured .story-score strong { color: var(--pink); }
+    .story-score span { color: var(--muted); font-size: .86rem; }
+    .story-card p { margin-bottom: 0; color: var(--muted); font-size: .88rem; }
+    .story-explain {
+      padding: 1.3rem 1.5rem;
+      border-left: 2px solid var(--pink);
+      background: rgb(255 255 255 / 3%);
+      color: #D0CDD4;
+      font-size: .9rem;
+    }
+    .story-explain strong { color: var(--white); }
+
+    .challenge-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: .8rem;
+    }
+    .challenge-card {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      min-height: 190px;
+      padding: 1.2rem;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: var(--surface);
+    }
+    .challenge-card h3 { margin: .95rem 0 .45rem; font-size: .95rem; line-height: 1.35; }
+    .challenge-card p { margin-bottom: 0; color: var(--muted); font-size: .8rem; line-height: 1.55; }
+    .status {
+      padding: .2rem .55rem;
+      border: 1px solid currentColor;
+      border-radius: 99px;
+      font-size: .62rem;
+      font-weight: 700;
+      letter-spacing: .09em;
+      text-transform: uppercase;
+    }
+    .status.fixed { color: var(--green); }
+    .status.accepted { color: var(--yellow); }
+    .status.open { color: var(--pink); }
+
+    .stack-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .7rem;
+    }
+    .stack-item {
+      padding: .7rem 1rem;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--surface);
+      color: #D8D5DC;
+      font-size: .84rem;
+      font-weight: 600;
+    }
+    .stack-item.accent { border-color: rgb(255 79 163 / 40%); color: var(--pink); }
+
+    .next-panel {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 2rem;
+      padding: clamp(1.5rem, 5vw, 3rem);
+      border: 1px solid rgb(255 79 163 / 35%);
+      border-radius: 12px;
+      background: linear-gradient(120deg, rgb(255 79 163 / 9%), transparent 70%), var(--surface);
+    }
+    .next-panel h2 { margin-bottom: .7rem; }
+    .next-panel p { max-width: 650px; margin-bottom: 0; color: var(--muted); }
+    .next-arrow { color: var(--pink); font-size: 3rem; line-height: 1; }
+
+    .site-footer {
+      padding: 2rem 0 2.5rem;
+      border-top: 1px solid var(--line);
+    }
+    .footer-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1.5rem;
+    }
+    .footer-wrap p { margin-bottom: 0; color: var(--muted); font-size: .78rem; }
+    .footer-links { display: flex; flex-wrap: wrap; gap: 1.1rem; }
+    .footer-links a { color: var(--muted); font-size: .78rem; text-decoration: none; }
+    .footer-links a:hover { color: var(--pink); }
+
+    @media (max-width: 800px) {
+      .pipeline { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .pipeline-card { min-height: 185px; }
+      .pipeline-card:nth-child(2)::after, .pipeline-card:nth-child(4)::after { content: "↓"; }
+      .pipeline-card:nth-child(2)::after { top: auto; right: 50%; bottom: -.95rem; }
+      .pipeline-card:nth-child(4)::after { display: none; }
+      .pipeline-card:nth-child(3) { grid-column: 2; grid-row: 2; }
+      .pipeline-card:nth-child(4) { grid-column: 1; grid-row: 2; }
+      .pipeline-card:nth-child(3)::after { content: "←"; }
+      .pipeline-card:nth-child(3)::after { top: 1.55rem; right: auto; left: -.72rem; }
+      .pipeline-card:nth-child(4)::after { display: block; content: "↓"; top: auto; right: 50%; bottom: -.95rem; }
+      .challenge-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .section-top { align-items: flex-start; flex-direction: column; gap: .8rem; }
+      .section-intro { max-width: 560px; }
+    }
+    @media (max-width: 560px) {
+      body { font-size: 15px; }
+      .nav-wrap, .wrap { width: min(100% - 36px, var(--content)); }
+      .nav-wrap { min-height: 60px; align-items: flex-start; flex-direction: column; justify-content: center; gap: .3rem; padding: .55rem 0 .45rem; }
+      .brand { font-size: .82rem; }
+      .brand-mark { width: 21px; height: 21px; }
+      .nav-links {
+        width: 100%;
+        gap: 1.25rem;
+        overflow-x: auto;
+        padding: .1rem 0 .2rem;
+        scrollbar-width: none;
+      }
+      .nav-links::-webkit-scrollbar { display: none; }
+      .nav-links a { font-size: .69rem; }
+      html { scroll-padding-top: 88px; }
+      .hero { padding: 4.5rem 0 3.5rem; }
+      h1 { font-size: clamp(3rem, 15vw, 4.6rem); }
+      .hero-lede { font-size: 1.02rem; }
+      .hero-actions { margin-bottom: 2.1rem; }
+      .button { min-height: 43px; padding: .55rem .8rem; font-size: .78rem; }
+      .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .55rem; }
+      .stat { min-height: 100px; padding: .85rem; }
+      .stat strong { font-size: 1.55rem; }
+      .stat span { font-size: .72rem; }
+      section { padding: 4rem 0; }
+      .video-frame video { aspect-ratio: 3 / 1; }
+      .video-caption { flex-direction: column; gap: .2rem; font-size: .7rem; }
+      .pipeline { gap: .6rem; }
+      .pipeline-card { min-height: 205px; padding: .9rem; }
+      .pipeline-card h3 { font-size: .9rem; }
+      .pipeline-card p { font-size: .73rem; }
+      .step-number { margin-bottom: .8rem; }
+      .results-table { min-width: 620px; }
+      .results-table th, .results-table td { padding: .8rem; font-size: .78rem; }
+      .table-note { grid-template-columns: 1fr; gap: .6rem; }
+      .story-grid { grid-template-columns: 1fr; gap: .65rem; }
+      .story-card { padding: 1.2rem; }
+      .story-score strong { font-size: 3rem; }
+      .challenge-grid { grid-template-columns: 1fr; gap: .6rem; }
+      .challenge-card { min-height: auto; padding: 1rem; }
+      .challenge-card h3 { margin-top: .75rem; }
+      .next-panel { grid-template-columns: 1fr; gap: 1rem; }
+      .next-arrow { display: none; }
+      .footer-wrap { align-items: flex-start; flex-direction: column; gap: .85rem; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="nav-wrap">
+      <a class="brand" href="#top" aria-label="iCub, the Little Gardener home">
+        <svg class="brand-mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+          <path d="M25.8 5.8C16.2 5.5 8.2 8.4 7 15.1c-.7 4.1 2.2 7.2 5.7 7.2 6.7 0 11.7-8.3 13.1-16.5Z" stroke="currentColor" stroke-width="2.3" stroke-linejoin="round"/>
+          <path d="M5.5 27c3.1-6.7 8.4-10.9 15.1-14.2" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"/>
+        </svg>
+        iCub <span>Little Gardener</span>
+      </a>
+      <nav class="nav-links" aria-label="Main navigation">
+        <a href="#how">How it works</a>
+        <a href="#results">Results</a>
+        <a href="#challenges">Challenges</a>
+        <a href="#stack">Stack</a>
+        <a href="#next">Next</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <div class="wrap">
+      <section class="hero" id="top" aria-labelledby="hero-title">
+        <p class="eyebrow">Robot learning · simulation</p>
+        <h1 id="hero-title">iCub, the <span>Little Gardener</span></h1>
+        <p class="hero-lede">A simulated iCub humanoid that waters plants from a sentence.</p>
+        <div class="hero-actions">
+          <a class="button primary" href="https://github.com/kaarima/icub-gardener" target="_blank" rel="noreferrer">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .9a11.1 11.1 0 0 0-3.51 21.63c.56.1.76-.24.76-.54v-2.1c-3.1.67-3.76-1.32-3.76-1.32-.5-1.28-1.24-1.62-1.24-1.62-1.01-.7.08-.69.08-.69 1.12.08 1.7 1.15 1.7 1.15.99 1.7 2.6 1.2 3.23.91.1-.72.39-1.2.7-1.47-2.48-.28-5.08-1.24-5.08-5.53 0-1.22.44-2.22 1.15-3-.12-.28-.5-1.42.11-2.96 0 0 .94-.3 3.06 1.15a10.62 10.62 0 0 1 5.57 0c2.12-1.44 3.05-1.15 3.05-1.15.61 1.54.23 2.68.12 2.96.72.78 1.15 1.78 1.15 3.01 0 4.3-2.61 5.24-5.1 5.52.4.34.75 1.02.75 2.06v3.08c0 .3.2.65.77.54A11.1 11.1 0 0 0 12 .9Z"/></svg>
+            GitHub
+          </a>
+          <a class="button" href="https://huggingface.co/Kimaa6" target="_blank" rel="noreferrer">Hugging Face ↗</a>
+          <a class="button" href="https://www.linkedin.com/in/karima-boussetta-597136317" target="_blank" rel="noreferrer">LinkedIn ↗</a>
+        </div>
+        <div class="stats" aria-label="Project highlights">
+          <div class="stat"><strong>82%</strong><span>ACT success on held-out scenes</span></div>
+          <div class="stat"><strong>400</strong><span>scripted expert demos recorded</span></div>
+          <div class="stat"><strong>50 / 50</strong><span>scripted expert · held-out scenes</span></div>
+          <div class="stat"><strong>4 GB</strong><span>laptop GPU target</span></div>
+        </div>
+      </section>
+
+      <section id="demo" aria-labelledby="demo-title">
+        <div class="section-top">
+          <div>
+            <p class="section-index">Watch the expert</p>
+            <h2 id="demo-title">One task, three views.</h2>
+          </div>
+          <p class="section-intro">The scene, eye and wrist cameras follow a scripted iCub as it picks up the can and waters a plant.</p>
+        </div>
+        <figure class="video-frame">
+          <video autoplay muted loop playsinline controls preload="metadata" poster="site/demo.jpg" aria-label="A simulated iCub watering a plant, shown through scene, eye and wrist cameras">
+            <source src="site/demo.mp4" type="video/mp4">
+            Your browser does not support HTML video.
+          </video>
+          <figcaption class="video-caption">
+            <strong>Scripted expert · three camera views</strong>
+            <span>Recorded in simulation. No plants were harmed.</span>
+          </figcaption>
+        </figure>
+      </section>
+
+      <section id="how" aria-labelledby="how-title">
+        <div class="section-top">
+          <div>
+            <p class="section-index">From words to watering</p>
+            <h2 id="how-title">How it works</h2>
+          </div>
+          <p class="section-intro">A simple path from an instruction to a robot action. The learned models are still catching up with the expert.</p>
+        </div>
+        <div class="pipeline">
+          <article class="pipeline-card">
+            <span class="step-number" aria-label="Step 1"></span>
+            <h3>Instruction</h3>
+            <p>One line says which plant to water and how much. It might ask for the left plant or just a little water.</p>
+          </article>
+          <article class="pipeline-card">
+            <span class="step-number" aria-label="Step 2"></span>
+            <h3>Scripted expert</h3>
+            <p>A hand-written controller reaches, grasps, pours and returns the can. It makes repeatable examples for a learner to copy.</p>
+          </article>
+          <article class="pipeline-card">
+            <span class="step-number" aria-label="Step 3"></span>
+            <h3>Demonstrations</h3>
+            <p>We save the expert’s actions and camera views as a LeRobot dataset. The cameras show the scene, eye and wrist views.</p>
+          </article>
+          <article class="pipeline-card">
+            <span class="step-number" aria-label="Step 4"></span>
+            <h3>ACT policy</h3>
+            <p>ACT learns robot movements from those examples. The best current version reaches 41/50 held-out scenes.</p>
+          </article>
+          <article class="pipeline-card next">
+            <span class="step-number" aria-label="Step 5"></span>
+            <h3>SmolVLA</h3>
+            <p>Next, teach a vision-language-action model to follow the sentence directly. It learns from the instruction and camera images.</p>
+            <span class="next-label">In progress</span>
+          </article>
+        </div>
+      </section>
+
+      <section class="results-section" id="results" aria-labelledby="results-title">
+        <div class="section-top">
+          <div>
+            <p class="section-index">Measured in simulation</p>
+            <h2 id="results-title">The expert still leads.</h2>
+          </div>
+          <p class="section-intro">Each result is 50 scenes. The intervals show how uncertain a score can be with a small test set.</p>
+        </div>
+        <div class="results-table-wrap">
+          <table class="results-table">
+            <thead>
+              <tr>
+                <th scope="col">System</th>
+                <th scope="col">Dev · seeds 0–49</th>
+                <th scope="col">Held-out · seeds 5000–5049</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Scripted expert</td>
+                <td><span class="result-strong">50/50 = 100%</span> (93–100%)</td>
+                <td><span class="result-strong">50/50 = 100%</span> (93–100%)</td>
+              </tr>
+              <tr>
+                <td>ACT + task ID · 80k steps</td>
+                <td><span class="result-strong">39/50 = 78%</span> (65–87%)</td>
+                <td><span class="result-strong">41/50 = 82%</span> (69–90%)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="table-note">
+          <p><strong>95% Wilson intervals.</strong> Success means at least 70% of the poured water lands in the target pot, the can ends upright, only the hand touches objects, and the episode finishes within its time limit.</p>
+          <p>Dev seeds are used to choose and tune a model; held-out seeds are saved for a final check and are not tuned on.</p>
+        </div>
+      </section>
+
+      <section id="more-data" aria-labelledby="data-title">
+        <div class="section-top">
+          <div>
+            <p class="section-index">A useful surprise</p>
+            <h2 id="data-title">More data made it worse.</h2>
+          </div>
+          <p class="section-intro">Twice the demonstrations did not mean twice the skill. Robot learning likes to keep us humble.</p>
+        </div>
+        <div class="story-grid">
+          <article class="story-card">
+            <p class="story-version">v1 · 200 demonstrations</p>
+            <div class="story-score"><strong>41/50</strong><span>held-out successes</span></div>
+            <p>The first ACT policy is still the best one so far.</p>
+          </article>
+          <article class="story-card featured">
+            <p class="story-version">v2 · 400 demonstrations</p>
+            <div class="story-score"><strong>23/50</strong><span>held-out successes</span></div>
+            <p>More examples, lower held-out success. Ouch.</p>
+          </article>
+        </div>
+        <div class="story-explain">
+          <strong>Why?</strong> Offline action error was similar: v2 could copy recorded demonstrations about as well. In a live run, small mistakes change what the robot sees next, then compound. That closed-loop drift is where v2 falls behind, especially at negative can angles.
+        </div>
+      </section>
+
+      <section id="challenges" aria-labelledby="challenges-title">
+        <div class="section-top">
+          <div>
+            <p class="section-index">What the numbers don’t show</p>
+            <h2 id="challenges-title">Challenges, honestly.</h2>
+          </div>
+          <p class="section-intro">Some are fixed. Some are accepted shortcuts. A few are still on the to-do list.</p>
+        </div>
+        <div class="challenge-grid">
+          <article class="challenge-card">
+            <span class="status fixed">Fixed</span>
+            <h3>The fake perfect score</h3>
+            <p>The pots had no collision, so the can could pass through them. Solid pots and contact checks made the score honest.</p>
+          </article>
+          <article class="challenge-card">
+            <span class="status accepted">Accepted</span>
+            <h3>AV1 video glitches</h3>
+            <p>A few v2 wrist-camera frames have a one-frame encoding glitch. The raw recorded images are clean.</p>
+          </article>
+          <article class="challenge-card">
+            <span class="status fixed">Fixed</span>
+            <h3>Hub uploads that hung</h3>
+            <p>IPv6 packet drops stalled uploads on this connection. Resumable uploads and an IPv4-only workaround got them through.</p>
+          </article>
+          <article class="challenge-card">
+            <span class="status accepted">Accepted</span>
+            <h3>Friction-only grasp</h3>
+            <p>The can is held by friction. The thumb curls last; no special latch or suction is involved.</p>
+          </article>
+          <article class="challenge-card">
+            <span class="status open">Open</span>
+            <h3>A narrow can layout</h3>
+            <p>Layouts that bring the can or open hand into a pot are redrawn. Results do not yet cover the full ±8 cm range.</p>
+          </article>
+          <article class="challenge-card">
+            <span class="status accepted">Accepted</span>
+            <h3>Water with training wheels</h3>
+            <p>Water moves, but does not push back. The can’s water weight stays fixed during a pour.</p>
+          </article>
+          <article class="challenge-card">
+            <span class="status accepted">Accepted</span>
+            <h3>A generous time limit</h3>
+            <p>Episodes get 45 seconds, not the 30 seconds first planned. A full watering takes its time.</p>
+          </article>
+          <article class="challenge-card">
+            <span class="status accepted">Accepted</span>
+            <h3>The can hides the water</h3>
+            <p>The solid can body blocks the camera’s view of the water level.</p>
+          </article>
+          <article class="challenge-card">
+            <span class="status accepted">Accepted</span>
+            <h3>Small pot contacts</h3>
+            <p>Can-body contacts under 10 N are not counted; they are hard to tell apart from the fingers touching the can.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="stack" aria-labelledby="stack-title">
+        <div class="section-top">
+          <div>
+            <p class="section-index">The tools behind the garden</p>
+            <h2 id="stack-title">Stack</h2>
+          </div>
+          <p class="section-intro">Simulation, robot learning and borrowed cloud GPUs. No greenhouse required.</p>
+        </div>
+        <div class="stack-list" aria-label="Project technology stack">
+          <span class="stack-item">threepp</span>
+          <span class="stack-item">NVIDIA PhysX</span>
+          <span class="stack-item">NVIDIA Warp</span>
+          <span class="stack-item">Hugging Face LeRobot</span>
+          <span class="stack-item accent">ACT</span>
+          <span class="stack-item accent">SmolVLA</span>
+          <span class="stack-item">Kaggle / Colab GPUs</span>
+        </div>
+      </section>
+
+      <section id="next" aria-labelledby="next-title">
+        <div class="next-panel">
+          <div>
+            <p class="section-index">What’s next</p>
+            <h2 id="next-title">Teach it to plan.</h2>
+            <p>Finish the SmolVLA experiment and report its results. Then add cuRobo motion planning to make arm paths smarter around obstacles.</p>
+          </div>
+          <span class="next-arrow" aria-hidden="true">↗</span>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-wrap">
+      <p>Built by Karima Boussetta, engineering student at INSAT, Tunisia</p>
+      <nav class="footer-links" aria-label="Social links">
+        <a href="https://github.com/kaarima/icub-gardener" target="_blank" rel="noreferrer">GitHub</a>
+        <a href="https://huggingface.co/Kimaa6" target="_blank" rel="noreferrer">Hugging Face</a>
+        <a href="https://www.linkedin.com/in/karima-boussetta-597136317" target="_blank" rel="noreferrer">LinkedIn</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script>
+    const sectionLinks = [...document.querySelectorAll('.nav-links a')];
+    const sections = sectionLinks
+      .map((link) => document.querySelector(link.getAttribute('href')))
+      .filter(Boolean);
+
+    let updatePending = false;
+    const updateCurrentSection = () => {
+      const marker = window.innerHeight * 0.3;
+      const current = sections.filter((section) => section.getBoundingClientRect().top <= marker).pop();
+
+      sectionLinks.forEach((link) => {
+        if (current && link.hash === `#${current.id}`) {
+          link.setAttribute('aria-current', 'location');
+        } else {
+          link.removeAttribute('aria-current');
+        }
+      });
+    };
+
+    window.addEventListener('scroll', () => {
+      if (updatePending) return;
+      updatePending = true;
+      requestAnimationFrame(() => {
+        updatePending = false;
+        updateCurrentSection();
+      });
+    }, { passive: true });
+    updateCurrentSection();
+  </script>
+</body>
+</html>
