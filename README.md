@@ -104,5 +104,3 @@ Things to know:
 - A seed whose episode was killed mid-run is not saved, and runs again on restart.
 - To start over on purpose, delete the `.jsonl` file.
 - The report itself is still printed only at the end, so keep `| tee report.txt` or `> report.txt` on the command.
-
-The progress log is in [docs/log.md](docs/log.md).
